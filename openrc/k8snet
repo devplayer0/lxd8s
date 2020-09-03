@@ -1,0 +1,53 @@
+#!/sbin/openrc-run
+description="Sets up networking in firecracker"
+myopts="hostname k8s_ip k8s_gw resolvconf"
+iface="${iface:-eth0}"
+
+depend() {
+	provide net
+	before hostname
+}
+
+parse_cmdline() {
+	local args="$@"
+	set -- $(cat /proc/cmdline)
+
+	for opt; do
+		for i in $myopts; do
+			case "$opt" in
+			$i=*)	eval "KOPT_${i}"='${opt#*=}';;
+			$i)		eval "KOPT_${i}=yes";;
+			no$i)	eval "KOPT_${i}=no";;
+			esac
+		done
+	done
+
+	set -- $args
+}
+start() {
+	parse_cmdline
+
+	if [ -n "$KOPT_hostname" ]; then
+		ebegin "Writing /proc/cmdline hostname"
+		echo "$KOPT_hostname" > /etc/hostname
+		eend $?
+	fi
+
+	if [ -n "$KOPT_k8s_ip" ]; then
+		ebegin "Setting $iface IP address from /proc/cmdline"
+		ip link set dev "$iface" up && ip addr add "$KOPT_k8s_ip" dev "$iface"
+		eend $?
+	fi
+
+	if [ -n "$KOPT_k8s_gw" ]; then
+		ebegin "Setting default gateway from /proc/cmdline"
+		ip route add default via "$KOPT_k8s_gw"
+		eend $?
+	fi
+
+	if [ -n "$KOPT_resolvconf" ]; then
+		ebegin "Writing /etc/resolv.conf from /proc/cmdline "
+		echo "$KOPT_resolvconf" | base64 -d > /etc/resolv.conf
+		eend $?
+	fi
+}

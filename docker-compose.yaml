@@ -1,0 +1,19 @@
+version: '3'
+services:
+  n0: &node
+    image: netsoc/lxd8s
+    build:
+      context: .
+      args:
+        - KERNEL_VERSION=5.4.61
+        - FIRECRACKER_VERSION=0.22.0
+        - FIRECTL_VERSION=0.1.0
+    environment:
+      - CPUS=4
+      - MEM=2048
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/kvm
+    tty: true
+    stdin_open: true

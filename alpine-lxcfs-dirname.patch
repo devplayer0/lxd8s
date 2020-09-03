@@ -1,0 +1,72 @@
+diff --git a/community/lxcfs/APKBUILD b/community/lxcfs/APKBUILD
+index 90fba312fd..06f0b67a63 100644
+--- a/community/lxcfs/APKBUILD
++++ b/community/lxcfs/APKBUILD
+@@ -2,7 +2,7 @@
+ # Maintainer: Stuart Cardall <developer@it-offshore.co.uk>
+ pkgname=lxcfs
+ pkgver=4.0.5
+-pkgrel=0
++pkgrel=1
+ pkgdesc="FUSE filesystem for LXC"
+ url="https://linuxcontainers.org/lxcfs"
+ arch="all"
+@@ -15,6 +15,7 @@ source="https://linuxcontainers.org/downloads/lxcfs/lxcfs-$pkgver.tar.gz
+ 	lxcfs.initd
+ 	README.alpine
+ 	lxcfs-subdir.patch
++	dirname.patch
+ 	"
+ 
+ build() {
+@@ -46,4 +47,5 @@ sha512sums="6961d7cb08a7562a17e513b53b1a3a75993824b1e1a4de12d080e73ba86f9883abb4
+ 71df316b1aaf1a0fadc230473a66c0be4d201d706481f1042c353b79fc629e9e681ec4fe0dfb113370e00d3f40175b0d7759fdcdcce57cf1d2db585068aa6e8d  lxcfs.confd
+ dde4940c39585cac27b1ec01ea9e8682c9fcac19ccf800f04336a20257dab0cee434942f9256783d92ae3a99e7e6edc4de630bbca511e17534c97444ca492f6e  lxcfs.initd
+ 16c65a10b2b95a85ea21d2cb44a45c9c7faf1e22c8c438c7325be96025588834a528544598a91facc13fa93cc46f6c4534fa2ca6bb58b152a26f1ced94b18f16  README.alpine
+-003702bad354bf0499449022a364a822e52e752cfb5491c9983b8f5d5160d53fbf598bdb7e7c6e7eab9544384ac79586552c3bb26463bd189e485909d884882b  lxcfs-subdir.patch"
++003702bad354bf0499449022a364a822e52e752cfb5491c9983b8f5d5160d53fbf598bdb7e7c6e7eab9544384ac79586552c3bb26463bd189e485909d884882b  lxcfs-subdir.patch
++f0ec8fa040747f8b77ad83492e75863b2de118289a10e900e1162fb8e0d2a31aec356a6b033dc6b9139678018442ae88826d734b200f9ba2bf15763b86f34a06  dirname.patch"
+diff --git a/community/lxcfs/dirname.patch b/community/lxcfs/dirname.patch
+new file mode 100644
+index 0000000000..da4377e175
+--- /dev/null
++++ b/community/lxcfs/dirname.patch
+@@ -0,0 +1,38 @@
++diff --git a/src/proc_fuse.c b/src/proc_fuse.c
++index a99162c..f6acf41 100644
++--- a/src/proc_fuse.c
+++++ b/src/proc_fuse.c
++@@ -213,6 +213,24 @@ static uint64_t get_memlimit(const char *cgroup, bool swap)
++ 	return memlimit;
++ }
++ 
+++/*
+++ * dirname() behaves differently on musl than glibc, so implement the bits we
+++ * need (the path in this case is always absolute and never ends in a `/`)
+++ */
+++static char *cgroup_parent(char *cgroup)
+++{
+++	char *last_slash = NULL;
+++	if (strcmp(cgroup, "/") == 0)
+++		return cgroup;
+++
+++	last_slash = strrchr(cgroup, '/');
+++	if (last_slash == cgroup)
+++		last_slash++;
+++	*last_slash = '\0';
+++
+++	return cgroup;
+++}
+++
++ static uint64_t get_min_memlimit(const char *cgroup, bool swap)
++ {
++ 	__do_free char *copy = NULL;
++@@ -227,7 +245,7 @@ static uint64_t get_min_memlimit(const char *cgroup, bool swap)
++ 	while (strcmp(copy, "/") != 0) {
++ 		char *it = copy;
++ 
++-		it = dirname(it);
+++		it = cgroup_parent(it);
++ 		memlimit = get_memlimit(it, swap);
++ 		if (memlimit > 0 && memlimit < retlimit)
++ 			retlimit = memlimit;
