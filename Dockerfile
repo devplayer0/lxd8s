@@ -37,7 +37,7 @@ COPY --from=lxcfs_builder /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
 COPY --from=lxcfs_builder /home/builder/packages /packages
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
     sed -i '1s|^|/packages/community\n|' /etc/apk/repositories && \
-    apk --no-cache add lxcfs lxd nftables && \
+    apk --no-cache add lxcfs lxd nftables btrfs-progs && \
     rm /packages/*/x86_64/*
 
 RUN rm /sbin/modprobe && \

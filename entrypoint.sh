@@ -21,7 +21,7 @@ ip link set dev vm master vm-bridge
 ip addr del "$ip" dev "$eth0"
 ip link set dev "$eth0" master vm-bridge
 
-[ -e "$LXD_DATA" ] || truncate -s 1G "$LXD_DATA"
+[ -e "$LXD_DATA" ] || truncate -s 4G "$LXD_DATA"
 
 
 rm -f /run/firecracker.sock
