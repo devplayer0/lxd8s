@@ -119,6 +119,7 @@ COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 ENV CPUS=1
 ENV MEM=512
 ENV LXD_DATA=./lxd.img
+ENV LXD_STORAGE=./storage.img
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

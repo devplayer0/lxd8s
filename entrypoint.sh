@@ -22,6 +22,7 @@ ip addr del "$ip" dev "$eth0"
 ip link set dev "$eth0" master vm-bridge
 
 [ -e "$LXD_DATA" ] || truncate -s 4G "$LXD_DATA"
+[ -e "$LXD_STORAGE" ] || truncate -s 16G "$LXD_STORAGE"
 
 
 rm -f /run/firecracker.sock
@@ -35,4 +36,5 @@ exec firectl \
         hostname=$(hostname) k8s_ip=$ip k8s_gw=$gw \
         resolvconf=$(sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf | base64 | tr -d '\n')" \
     --root-drive ./rootfs.img \
-    --add-drive "$LXD_DATA:rw"
+    --add-drive "$LXD_DATA:rw" \
+    --add-drive "$LXD_STORAGE:rw"
