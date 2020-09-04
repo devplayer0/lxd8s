@@ -77,6 +77,9 @@ RUN ln -sf /etc/init.d/noop /etc/init.d/modules && \
     ln -sf /etc/init.d/noop /etc/init.d/clock && \
     rm /etc/init.d/osclock /etc/init.d/hwclock /etc/init.d/swclock
 
+COPY conf/sysctl.conf /etc/sysctl.d/lxd.conf
+COPY conf/limits.conf /etc/security/limits.d/lxd.conf
+
 RUN echo 'LXD_OPTIONS="--debug --logfile /var/log/lxd.log"' >> /etc/conf.d/lxd
 
 FROM alpine:edge AS rootfs_img_builder
