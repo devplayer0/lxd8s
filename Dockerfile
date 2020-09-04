@@ -109,7 +109,7 @@ RUN apk --no-cache add libc6-compat
 RUN wget -O /usr/local/bin/firecracker \
         "https://github.com/firecracker-microvm/firecracker/releases/download/v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64" && \
     chmod +x /usr/local/bin/firecracker
-RUN wget -O /usr/local/bin/firectl "https://firectl-release.s3.amazonaws.com/firectl-v${FIRECTL_VERSION}" && \
+RUN wget -O /usr/local/bin/firectl "https://github.com/netsoc/firectl/releases/latest/download/firectl" && \
     chmod +x /usr/local/bin/firectl
 
 WORKDIR /opt/lxd8s
@@ -119,5 +119,6 @@ COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 ENV CPUS=1
 ENV MEM=512
 ENV LXD_DATA=./lxd.img
+ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]
