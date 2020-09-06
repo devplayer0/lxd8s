@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "lxd8s.fullname" . }}
+  labels:
+    {{- include "lxd8s.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "lxd8s.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "lxd8s.fullname" . }}
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+    {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      labels:
+        {{- include "lxd8s.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "lxd8s.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN]
+          image: '{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: LXD_DATA
+              value: /dev/lxd
+            - name: LXD_STORAGE
+              value: /dev/storage
+            - name: CPUS
+              value: {{ .Values.vm.cpus | quote }}
+            - name: MEM
+              value: {{ .Values.vm.memory | quote }}
+            - name: FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS
+              value: {{ .Values.firectlTimeout | quote }}
+            - name: CERT_SECRET_BASE
+              value: {{ include "lxd8s.fullname" . }}-cert-
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          #livenessProbe:
+          #  httpGet:
+          #    path: /
+          #    port: http
+          #readinessProbe:
+          #  httpGet:
+          #    path: /
+          #    port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeDevices:
+            - name: lxd
+              devicePath: /dev/lxd
+            - name: storage
+              devicePath: /dev/storage
+          stdin: true
+          tty: true
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: lxd
+      spec:
+        {{- if .Values.pvc.storageClass }}
+        storageClassName: {{ .Values.pvc.storageClass }}
+        {{- end }}
+        accessModes: [ReadWriteOnce]
+        volumeMode: Block
+        resources:
+          requests:
+            storage: {{ .Values.pvc.lxd.size | quote }}
+    - metadata:
+        name: storage
+      spec:
+        {{- if .Values.pvc.storageClass }}
+        storageClassName: {{ .Values.pvc.storageClass }}
+        {{- end }}
+        accessModes: [ReadWriteOnce]
+        volumeMode: Block
+        resources:
+          requests:
+            storage: {{ .Values.pvc.storage.size | quote }}

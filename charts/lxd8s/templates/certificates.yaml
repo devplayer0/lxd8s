@@ -1,0 +1,40 @@
+{{- $dot := . }}
+{{- $vals := .Values }}
+{{- range $i := until (int .Values.certCount) }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ print (include "lxd8s.fullname" $dot) "-cert-" $i }}
+spec:
+  secretName: {{ print (include "lxd8s.fullname" $dot) "-cert-" $i }}
+  duration: {{ $vals.certs.duration }}
+  renewBefore: {{ $vals.certs.renewBefore }}
+  {{- with $vals.certs.subject }}
+  subject:
+    {{- toYaml . | nindent 4}}
+  {{- end }}
+  # The use of the common name field has been deprecated since 2000 and is
+  # discouraged from being used.
+  commonName: {{ include "lxd8s.fullname" $dot }}-{{ $i }}
+  isCA: false
+  {{- with $vals.certs.key }}
+  privateKey:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}.svc.{{ $vals.clusterDomain }}
+    - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}.svc
+    - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}
+    - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}
+    - {{ include "lxd8s.fullname" $dot }}-{{ $i }}
+  issuerRef:
+    kind: Issuer
+    name: {{ include "lxd8s.fullname" $dot }}-ca
+    # This is optional since cert-manager will default to this value however
+    # if you are using an external issuer, change this to that issuer group.
+    group: cert-manager.io
+{{- end }}
