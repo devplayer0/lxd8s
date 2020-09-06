@@ -1,0 +1,22 @@
+#!/sbin/openrc-run
+description="Sets up kernel command line variables"
+opts="${opts:-hostname}"
+iface="${iface:-eth0}"
+
+write_opt() {
+    echo "KOPT_$1=$2" >> /etc/cmdline
+}
+
+start() {
+    set -- $(cat /proc/cmdline)
+
+    for opt; do
+        for i in $opts; do
+            case "$opt" in
+            $i=*)   write_opt $i "${opt#*=}";;
+            $i)     write_opt $i yes;;
+            no$i)   write_opt $i no;;
+            esac
+        done
+    done
+}

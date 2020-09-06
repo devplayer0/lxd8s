@@ -46,12 +46,14 @@ RUN rm /sbin/modprobe && \
     sed -i 's|#rc_cgroup_mode=".*"|rc_cgroup_mode="hybrid"|' /etc/rc.conf && \
     sed -i 's|#rc_cgroup_memory_use_hierarchy=".*"|rc_cgroup_memory_use_hierarchy="YES"|' /etc/rc.conf && \
     echo 'cgroup_hierarchy_name="systemd"' > /etc/conf.d/cgroups && \
+    echo 'opts="hostname k8s_ip k8s_gw resolvconf"' > /etc/conf.d/cmdline && \
     #
     echo ttyS0 >> /etc/securetty && \
     sed -ri 's|^#ttyS0(.+)ttyS0|ttyS0\1-l /bin/autologin ttyS0|' /etc/inittab
 COPY scripts/modprobe /sbin/modprobe
 COPY scripts/autologin /bin/autologin
 COPY openrc/cgroups /etc/init.d/cgroups
+COPY openrc/cmdline /etc/init.d/cmdline
 COPY openrc/noop /etc/init.d/noop
 COPY openrc/k8snet /etc/init.d/k8snet
 COPY openrc/lxd-data /etc/init.d/lxd-data
@@ -60,6 +62,7 @@ RUN rc-update add devfs sysinit && \
     rc-update add sysfs sysinit && \
     rc-update add procfs sysinit && \
     rc-update add cgroups sysinit && \
+    rc-update add cmdline sysinit && \
     #
     rc-update add k8snet boot && \
     rc-update add sysctl boot && \
@@ -80,7 +83,7 @@ RUN ln -sf /etc/init.d/noop /etc/init.d/modules && \
 COPY conf/sysctl.conf /etc/sysctl.d/lxd.conf
 COPY conf/limits.conf /etc/security/limits.d/lxd.conf
 
-RUN echo 'LXD_OPTIONS="--debug --logfile /var/log/lxd.log"' >> /etc/conf.d/lxd
+RUN echo 'LXD_OPTIONS="--logfile /var/lib/lxd/lxd.log"' >> /etc/conf.d/lxd
 
 FROM alpine:edge AS rootfs_img_builder
 
@@ -106,7 +109,7 @@ FROM alpine:3.12
 ARG FIRECRACKER_VERSION
 ARG FIRECTL_VERSION
 
-RUN apk --no-cache add tini iproute2
+RUN apk --no-cache add iproute2 curl jq
 
 RUN apk --no-cache add libc6-compat
 RUN wget -O /usr/local/bin/firecracker \
@@ -119,10 +122,13 @@ WORKDIR /opt/lxd8s
 COPY --from=kernel_builder /build/vmlinux ./vmlinux
 COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 
+COPY k8s.sh /usr/local/bin/k8s.sh
+
 ENV CPUS=1
 ENV MEM=512
 ENV LXD_DATA=./lxd.img
 ENV LXD_STORAGE=./storage.img
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
+ENV CERT_SECRET_BASE=
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

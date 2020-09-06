@@ -1,6 +1,7 @@
 #!/sbin/openrc-run
 description="Sets up LXD data volume"
-device="${device:-/dev/vdb}"
+dev_data="${dev_data:-/dev/vdb}"
+dev_overlay="${dev_overlay:-/dev/vdc}"
 
 depend() {
 	before lxd
@@ -8,15 +9,19 @@ depend() {
 
 do_mount() {
     ebegin "Mounting LXD data volume"
-    mkdir -p /var/lib/lxd && mount -t ext4 "$device" /var/lib/lxd
+    mkdir -p /var/lib/lxd && mount -t ext4 "$dev_data" /var/lib/lxd
     eend $?
 }
 start() {
     if ! do_mount; then
-        ebegin "Formatting $device as ext4"
-        mkfs.ext4 -L lxd "$device"
+        ebegin "Formatting $dev_data as ext4"
+        mkfs.ext4 -L lxd "$dev_data"
         eend $?
 
         do_mount
     fi
+
+    ebegin "Extracting LXD data overlay from $dev_overlay"
+    tar -C /var/lib/lxd -xf "$dev_overlay"
+    eend $?
 }
