@@ -16,9 +16,21 @@ start() {
         eend $?
     fi
 
+    ip link set dev lo up
+
+    ip link set dev "$iface" up
+    ip addr add 192.168.69.2/30 dev "$iface"
+    ip route add default via 192.168.69.1
+
+    if [ -n "$KOPT_k8s_mtu" ]; then
+        ebegin "Setting $iface MTU address from /proc/cmdline"
+        ip link set dev "$iface" mtu "$KOPT_k8s_mtu"
+        eend $?
+    fi
+
     if [ -n "$KOPT_k8s_ip" ]; then
         ebegin "Setting $iface IP address from /proc/cmdline"
-        ip link set dev "$iface" up && ip addr add "$KOPT_k8s_ip" dev "$iface"
+        ip addr add "$KOPT_k8s_ip" dev "$iface"
         eend $?
     fi
 

@@ -46,7 +46,7 @@ RUN rm /sbin/modprobe && \
     sed -i 's|#rc_cgroup_mode=".*"|rc_cgroup_mode="hybrid"|' /etc/rc.conf && \
     sed -i 's|#rc_cgroup_memory_use_hierarchy=".*"|rc_cgroup_memory_use_hierarchy="YES"|' /etc/rc.conf && \
     echo 'cgroup_hierarchy_name="systemd"' > /etc/conf.d/cgroups && \
-    echo 'opts="hostname k8s_ip k8s_gw resolvconf"' > /etc/conf.d/cmdline && \
+    echo 'opts="hostname k8s_mtu k8s_ip k8s_gw resolvconf"' > /etc/conf.d/cmdline && \
     #
     echo ttyS0 >> /etc/securetty && \
     sed -ri 's|^#ttyS0(.+)ttyS0|ttyS0\1-l /bin/autologin ttyS0|' /etc/inittab
@@ -130,5 +130,6 @@ ENV LXD_DATA=./lxd.img
 ENV LXD_STORAGE=./storage.img
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
 ENV CERT_SECRET_BASE=
+ENV KUBELAN=no
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

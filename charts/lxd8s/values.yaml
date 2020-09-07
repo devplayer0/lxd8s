@@ -8,6 +8,18 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ''
 
+kubelan:
+  image:
+    repository: ghcr.io/devplayer0/kubelan
+    pullPolicy: IfNotPresent
+    tag: v0.2.0
+  log_level: DEBUG
+  extraServices: []
+  vxlan:
+    interface: lxd-overlay
+    vni: 7331
+  hooks: {}
+
 imagePullSecrets: []
 nameOverride: ''
 fullnameOverride: ''

@@ -13,47 +13,56 @@ extract_secret() {
 }
 
 setup_network() {
-    #ip link show vm-bridge && ip link del vm-bridge
-    #ip link add vm-bridge type bridge
-    #ip link set dev vm-bridge up
+    until curl -f -s localhost:8181/health > /dev/null; do sleep 0.5; done
+    overlay_iface="$(curl -s localhost:8181/config | jq -r .VXLAN.Interface)"
+    mtu="$(ip link show dev $overlay_iface | grep mtu | awk '{ print $5 }')"
 
-    ip link show vm 2>&1 > /dev/null && ip link del vm
+    ip link show lxd-bridge > /dev/null 2>&1 && ip link del lxd-bridge
+    ip link add lxd-bridge type bridge
+    ip link set dev lxd-bridge up
+    ip link set dev lxd-bridge mtu "$mtu"
+    ip addr add 192.168.69.1/30 dev lxd-bridge
+
+    ip link set dev "$overlay_iface" master lxd-bridge
+
+    ip link show vm > /dev/null 2>&1 && ip link del vm
     ip tuntap add vm mode tap
     ip link set dev vm up
-    #ip link set dev vm master vm-bridge
+    ip link set dev vm master lxd-bridge
 
-    #ip addr del "$ip" dev "$eth0"
-    #ip link set dev "$eth0" master vm-bridge
+    iptables -t nat -F
+    iptables -t nat -A POSTROUTING -s 192.168.69.2 -j SNAT --to-source "$(hostname -i)"
+    iptables -t nat -A PREROUTING -d "$(hostname)" -p tcp --dport 443 -j DNAT --to-destination 192.168.69.2
+
+    CMDLINE="$CMDLINE k8s_mtu=$mtu"
+}
+
+make_overlay() {
+    mkdir /tmp/lxd_overlay
+
+    if [ -n "$CERT_SECRET_BASE" ]; then
+        source k8s.sh
+        INDEX="$(hostname | sed -r 's|^.*-([0-9]+)|\1|')"
+        data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${INDEX}")"
+
+        extract_secret "$data" "ca.crt" > /tmp/lxd_overlay/ca.crt
+        extract_secret "$data" "tls.crt" > /tmp/lxd_overlay/server.crt
+        extract_secret "$data" "tls.key" > /tmp/lxd_overlay/server.key
+    fi
+
+    tar -C /tmp/lxd_overlay -cf lxd_overlay.tar .
+    rm -r /tmp/lxd_overlay
 }
 
 mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
-eth0="$(ip route list default | awk '{ print $5 }')"
-gw="$(ip route list default | awk '{ print $3 }')"
-ip="$(ip addr show $eth0 | grep 'scope global' | awk '{ print $2 }')"
-
-setup_network
-
 CMDLINE="console=ttyS0 noapic reboot=k panic=1 pci=off"
 CMDLINE="$CMDLINE hostname=$(hostname)"
-#CMDLINE="$CMDLINE k8s_ip=$ip k8s_gw=$gw"
 CMDLINE="$CMDLINE resolvconf=$(sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf | b64)"
 
-mkdir /tmp/lxd_overlay
-
-if [ -n "$CERT_SECRET_BASE" ]; then
-    source k8s.sh
-    INDEX="$(hostname | sed -r 's|^.*-([0-9]+)|\1|')"
-    data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${INDEX}")"
-
-    extract_secret "$data" "ca.crt"  > /tmp/lxd_overlay/ca.crt
-    extract_secret "$data" "tls.crt"  > /tmp/lxd_overlay/server.crt
-    extract_secret "$data" "tls.key"  > /tmp/lxd_overlay/server.key
-fi
-
-tar -C /tmp/lxd_overlay -cf lxd_overlay.tar .
-rm -r /tmp/lxd_overlay
+[ -n "$KUBELAN" ] && [ "$KUBELAN" != "no" ] && setup_network
+make_overlay
 
 [ -e "$LXD_DATA" ] || truncate -s 4G "$LXD_DATA"
 [ -e "$LXD_STORAGE" ] || truncate -s 16G "$LXD_STORAGE"

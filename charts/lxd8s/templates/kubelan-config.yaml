@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "lxd8s.fullname" . }}-kubelan
+  labels:
+    {{- include "lxd8s.labels" . | nindent 4 }}
+data:
+  kubelan.yaml: |
+    log_level: {{ .Values.kubelan.log_level }}
+    services:
+      - {{ include "lxd8s.fullname" . }}
+    {{- range $s := .Values.kubelan.extraServices }}
+      - {{ $s }}
+    {{- end }}
+    {{- with .Values.kubelan.vxlan }}
+    vxlan:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.kubelan.hooks }}
+    hooks:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}

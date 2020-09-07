@@ -44,18 +44,12 @@ spec:
               value: {{ .Values.firectlTimeout | quote }}
             - name: CERT_SECRET_BASE
               value: {{ include "lxd8s.fullname" . }}-cert-
+            - name: KUBELAN
+              value: 'yes'
           ports:
             - name: https
               containerPort: 443
               protocol: TCP
-          #livenessProbe:
-          #  httpGet:
-          #    path: /
-          #    port: http
-          #readinessProbe:
-          #  httpGet:
-          #    path: /
-          #    port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeDevices:
@@ -65,6 +59,33 @@ spec:
               devicePath: /dev/storage
           stdin: true
           tty: true
+        - name: kubelan
+          image: '{{ .Values.kubelan.image.repository }}:{{ .Values.kubelan.image.tag }}'
+          imagePullPolicy: {{ .Values.kubelan.image.pullPolicy }}
+          env:
+            - name: KL_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: KL_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8181
+            periodSeconds: 5
+          securityContext:
+            capabilities:
+              add: [NET_ADMIN]
+          volumeMounts:
+            - name: kubelan-config
+              mountPath: /run/config
+      volumes:
+        - name: kubelan-config
+          configMap:
+            name: {{ include "lxd8s.fullname" . }}-kubelan
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
