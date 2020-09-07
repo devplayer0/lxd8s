@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+description="Extracts overlay archive"
+dev="${dev:-/dev/vdc}"
+
+depend() {
+    need localmount
+}
+
+start() {
+    ebegin "Extracting overlay from $dev"
+    tar -C / -xf "$dev"
+    eend $?
+}

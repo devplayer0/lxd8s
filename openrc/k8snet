@@ -39,10 +39,4 @@ start() {
         ip route add default via "$KOPT_k8s_gw"
         eend $?
     fi
-
-    if [ -n "$KOPT_resolvconf" ]; then
-        ebegin "Writing /etc/resolv.conf from /proc/cmdline "
-        echo "$KOPT_resolvconf" | base64 -d > /etc/resolv.conf
-        eend $?
-    fi
 }

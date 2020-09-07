@@ -38,28 +38,31 @@ setup_network() {
 }
 
 make_overlay() {
-    mkdir /tmp/lxd_overlay
+    mkdir /tmp/overlay
+
+    mkdir -p /tmp/overlay/etc
+    sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf > /tmp/overlay/etc/resolv.conf
 
     if [ -n "$CERT_SECRET_BASE" ]; then
         source k8s.sh
         INDEX="$(hostname | sed -r 's|^.*-([0-9]+)|\1|')"
         data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${INDEX}")"
 
-        extract_secret "$data" "ca.crt" > /tmp/lxd_overlay/ca.crt
-        extract_secret "$data" "tls.crt" > /tmp/lxd_overlay/server.crt
-        extract_secret "$data" "tls.key" > /tmp/lxd_overlay/server.key
+        mkdir -p /tmp/overlay/var/lib/lxd
+        extract_secret "$data" "ca.crt" > /tmp/overlay/var/lib/lxd/ca.crt
+        extract_secret "$data" "tls.crt" > /tmp/overlay/var/lib/lxd/server.crt
+        extract_secret "$data" "tls.key" > /tmp/overlay/var/lib/lxd/server.key
     fi
 
-    tar -C /tmp/lxd_overlay -cf lxd_overlay.tar .
-    rm -r /tmp/lxd_overlay
+    tar -C /tmp/overlay -cf overlay.tar .
+    rm -r /tmp/overlay
 }
 
 mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
-CMDLINE="console=ttyS0 noapic reboot=k panic=1 pci=off"
+CMDLINE="console=ttyS0 noapic reboot=k panic=1"
 CMDLINE="$CMDLINE hostname=$(hostname)"
-CMDLINE="$CMDLINE resolvconf=$(sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf | b64)"
 
 [ -n "$KUBELAN" ] && [ "$KUBELAN" != "no" ] && setup_network
 make_overlay
@@ -78,5 +81,5 @@ exec firectl \
     --kernel-opts "$CMDLINE" \
     --root-drive ./rootfs.img \
     --add-drive "$LXD_DATA:rw" \
-    --add-drive "./lxd_overlay.tar:ro" \
+    --add-drive "./overlay.tar:ro" \
     --add-drive "$LXD_STORAGE:rw"
