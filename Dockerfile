@@ -46,7 +46,7 @@ RUN rm /sbin/modprobe && \
     sed -i 's|#rc_cgroup_mode=".*"|rc_cgroup_mode="hybrid"|' /etc/rc.conf && \
     sed -i 's|#rc_cgroup_memory_use_hierarchy=".*"|rc_cgroup_memory_use_hierarchy="YES"|' /etc/rc.conf && \
     echo 'cgroup_hierarchy_name="systemd"' > /etc/conf.d/cgroups && \
-    echo 'opts="hostname k8s_mtu k8s_ip k8s_gw"' > /etc/conf.d/cmdline && \
+    echo 'opts="hostname inet_mtu inet_addr inet_gw lxd_mtu"' > /etc/conf.d/cmdline && \
     #
     echo ttyS0 >> /etc/securetty && \
     sed -ri 's|^#ttyS0(.+)ttyS0|ttyS0\1-l /bin/autologin ttyS0|' /etc/inittab
@@ -59,7 +59,7 @@ COPY openrc/cmdline /etc/init.d/cmdline
 COPY openrc/noop /etc/init.d/noop
 COPY openrc/lxd-data /etc/init.d/lxd-data
 COPY openrc/overlay /etc/init.d/overlay
-COPY openrc/k8snet /etc/init.d/k8snet
+COPY openrc/lxd8snet /etc/init.d/lxd8snet
 
 RUN rc-update add devfs sysinit && \
     rc-update add sysfs sysinit && \
@@ -69,10 +69,10 @@ RUN rc-update add devfs sysinit && \
     rc-update add lxd-data sysinit && \
     rc-update add overlay sysinit && \
     #
-    rc-update add k8snet boot && \
     rc-update add sysctl boot && \
     rc-update add hostname boot && \
     rc-update add syslog boot && \
+    rc-update add lxd8snet boot && \
     #
     rc-update add killprocs shutdown && \
     rc-update add mount-ro shutdown && \
@@ -128,12 +128,19 @@ COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 
 COPY k8s.sh /usr/local/bin/k8s.sh
 
+
+ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
+
 ENV CPUS=1
 ENV MEM=512
 ENV LXD_DATA=./lxd.img
 ENV LXD_STORAGE=./storage.img
-ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
-ENV CERT_SECRET_BASE=
+
+ENV INET_HOST=192.168.69.1/30
+ENV INET_VM=192.168.69.2/30
+
 ENV KUBELAN=no
+ENV CERT_SECRET_BASE=
+
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

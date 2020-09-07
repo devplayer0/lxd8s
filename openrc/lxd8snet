@@ -1,0 +1,38 @@
+#!/sbin/openrc-run
+description="Sets up networking in firecracker"
+iface_inet="${iface_inet:-eth0}"
+iface_lxd="${iface_lxd:-eth1}"
+
+depend() {
+    provide net
+    before hostname
+}
+
+start() {
+    source /etc/cmdline
+
+    if [ -n "$KOPT_hostname" ]; then
+        ebegin "Writing /proc/cmdline hostname"
+        echo "$KOPT_hostname" > /etc/hostname
+        eend $?
+    fi
+
+    ip link set dev lo up
+
+    ebegin "Setting up internet interface $iface_inet"
+    ip link set dev "$iface_inet" up && \
+    ip link set dev "$iface_inet" mtu "$KOPT_inet_mtu" && \
+    ip addr add "$KOPT_inet_addr" dev "$iface_inet" && \
+    ip route add default via "$KOPT_inet_gw"
+    eend $?
+
+    ebegin "Setting up LXD interface $iface_lxd"
+    ip link set dev "$iface_lxd" up
+    eend $?
+
+    if [ -n "$KOPT_lxd_mtu" ]; then
+        ebegin "Setting LXD interface $iface_lxd MTU"
+        ip link set dev "$iface_lxd" mtu "$KOPT_lxd_mtu"
+        eend $?
+    fi
+}
