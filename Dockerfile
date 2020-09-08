@@ -8,7 +8,7 @@ WORKDIR /build
 RUN wget "https://cdn.kernel.org/pub/linux/kernel/$(echo $KERNEL_VERSION | \
         sed -r 's|^([0-9])\.[0-9]+(\.[0-9]+)?|v\1.x|')/linux-$KERNEL_VERSION.tar.xz"
 
-COPY kernel-virtnet-no-lro-config.patch /build/
+COPY patches/kernel-virtnet-no-lro-config.patch /build/
 COPY kernel_config /build/.config
 RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     for p in *.patch; do patch -d "linux-$KERNEL_VERSION/" -p1 < "$p"; done && \
@@ -23,7 +23,7 @@ FROM alpinelinux/docker-abuild AS lxcfs_builder
 
 RUN git clone https://gitlab.alpinelinux.org/alpine/aports
 
-COPY alpine-lxcfs-dirname.patch lxcfs.patch
+COPY patches/alpine-lxcfs-dirname.patch lxcfs.patch
 RUN cd aports/community/lxcfs && \
     git checkout 90fdadb3c5e71d749ff24454a6bebb322c851968 && \
     git apply ~/lxcfs.patch && \
@@ -137,7 +137,7 @@ WORKDIR /opt/lxd8s
 COPY --from=kernel_builder /build/vmlinux ./vmlinux
 COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 
-COPY k8s.sh /usr/local/bin/k8s.sh
+COPY scripts/k8s.sh /usr/local/bin/k8s.sh
 RUN mkdir -p /run/config && echo '{}' > /run/config/preseed.yaml
 
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
