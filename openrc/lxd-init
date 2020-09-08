@@ -1,0 +1,23 @@
+#!/sbin/openrc-run
+description="Initializes LXD with a preseed file"
+preseed_file="${preseed_file:-/var/lib/lxd/preseed.json}"
+lxd_socket="${lxd_socket:-/var/lib/lxd/unix.socket}"
+
+depend() {
+	need lxd
+}
+
+start() {
+    ([ -e /var/lib/lxd/cluster.crt ] || [ ! -e "$preseed_file" ]) && return
+
+    until curl -sf --max-time 1 --unix-socket "$lxd_socket" "http://lxd/" > /dev/null; do
+        einfo "Waiting for LXD to be ready..."
+        sleep 1
+    done
+
+    ebegin "Initialising LXD with preseed file $preseed_file"
+    # Set the listen address first as in cluster join mode non-cluster config is ignored :(
+    lxc config set core.https_address="$(jq -r '.config["core.https_address"]' < "$preseed_file")" && \
+    lxd init --preseed < "$preseed_file"
+    eend $?
+}

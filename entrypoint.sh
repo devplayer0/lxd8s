@@ -20,19 +20,24 @@ extract_secret() {
 ensure_link_gone() {
     (ip link show "$1" > /dev/null 2>&1 && ip link del "$1") || true
 }
-
 # Get the address part of an IP network (e.g. 192.168.1.1/24 -> 192.168.1.1)
 ip_net_addr() {
     echo "$1" | sed -r 's|(.+)/.+|\1|'
 }
-
+# Set the last byte in an IPv4 network (e.g. 192.168.0.<byte>/24)
+set_net_last() {
+   echo "$1" | sed -r "s|([0-9]+\.[0-9]+\.[0-9]+\.)[0-9]+(/[0-9]+)|\1$2\2|"
+}
 get_link_mtu() {
     ip link show dev "$1" | grep mtu | awk '{ print $5 }'
 }
 
-setup_network() {
-    CMDLINE="$CMDLINE hostname=$(hostname)"
+k8s_replica() {
+  r="$(echo $1 | sed -r '/^.+-[0-9]+/!{q1}; {s|^.+-([0-9]+)|\1|}')"
+  ([ $? -eq 0 ] && echo "$r") || echo 0
+}
 
+setup_network() {
     iface_host_inet="$(ip route | grep default | awk '{ print $5 }')"
     inet_mtu="$(get_link_mtu $iface_host_inet)"
 
@@ -50,11 +55,14 @@ setup_network() {
     ensure_link_gone "$IFACE_VM_LXD"
     ip tuntap add "$IFACE_VM_LXD" mode tap
     ip link set dev "$IFACE_VM_LXD" up
+    LXD_NET_IP="$(set_net_last $LXD_NET $(($REPLICA + 1)))"
+    CMDLINE="$CMDLINE lxd_addr=$LXD_NET_IP"
 
     # Set up NAT so that LXD requests go to the VM's internet interface and traffic coming from the VM's internet
     # interface is routed properly
     iptables -t nat -F
     iptables -t nat -A POSTROUTING -s "$inet_vm_addr" -j SNAT --to-source "$(hostname -i)"
+    iptables -t nat -A PREROUTING -d "$(hostname)" -p tcp --dport 8080 -j DNAT --to-destination "$inet_vm_addr"
     iptables -t nat -A PREROUTING -d "$(hostname)" -p tcp --dport 443 -j DNAT --to-destination "$inet_vm_addr"
 
     # If we're using kubelan, wait until it's up and snatch the VXLAN interface name and MTU
@@ -74,21 +82,85 @@ setup_network() {
 }
 
 make_overlay() {
-    mkdir /tmp/overlay
+    mkdir -p /tmp/overlay /tmp/overlay/etc /tmp/overlay/var/lib/lxd
 
-    mkdir -p /tmp/overlay/etc
+    # resolv.conf from host
     sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf > /tmp/overlay/etc/resolv.conf
 
+    # Import certificates from cert-manager ConfigMaps
     if [ -n "$CERT_SECRET_BASE" ]; then
         set +x
         source k8s.sh
-        INDEX="$(hostname | sed -r 's|^.*-([0-9]+)|\1|')"
-        data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${INDEX}")"
+        data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${REPLICA}")"
 
-        mkdir -p /tmp/overlay/var/lib/lxd
-        extract_secret "$data" "ca.crt" > /tmp/overlay/var/lib/lxd/ca.crt
+        extract_secret "$data" "ca.crt" > /tmp/overlay/var/lib/lxd/server.ca
         extract_secret "$data" "tls.crt" > /tmp/overlay/var/lib/lxd/server.crt
         extract_secret "$data" "tls.key" > /tmp/overlay/var/lib/lxd/server.key
+
+        # We need replica 0 (the bootstrap node) cert to join the cluster
+        if [ $REPLICA -ne 0 ]; then
+            data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}0")"
+            cluster_cert="$(extract_secret "$data" "tls.crt")"
+        fi
+        set -x
+    elif [ $REPLICA -ne 0 ]; then
+        cluster_cert="$(cat <<EOF
+-----BEGIN CERTIFICATE-----
+IDK SOME GARBAGE
+-----END CERTIFICATE-----
+EOF
+)"
+    fi
+
+    # Setup LXD preseed
+    if [ $REPLICA -eq 0 ]; then
+        set +x
+        yq merge -x /run/config/preseed.yaml - <<EOF | yq read -j - | jq . > /tmp/overlay/var/lib/lxd/preseed.json
+config:
+  core.https_address: '$inet_vm_addr:443'
+  core.trust_ca_certificates: true
+  cluster.https_address: '$(ip_net_addr $LXD_NET_IP):443'
+
+cluster:
+  enabled: true
+  server_name: '$(hostname)'
+
+storage_pools:
+  - name: storage
+    description: lxd8s storage
+    driver: btrfs
+    config:
+      source: /dev/vdd
+
+profiles:
+  - name: default
+    description: lxd8s profile
+    devices:
+      eth0:
+        type: nic
+        name: eth0
+        nictype: bridged
+        parent: lxd-lan
+      root:
+        type: disk
+        path: /
+        pool: storage
+EOF
+        set -x
+    else
+        set +
+        cat <<EOF | yq read -j - | jq . > /tmp/overlay/var/lib/lxd/preseed.json
+config:
+  core.https_address: '$inet_vm_addr:443'
+
+cluster:
+  enabled: true
+  server_name: '$(hostname)'
+  server_address: '$(ip_net_addr $LXD_NET_IP):443'
+  cluster_address: '$(ip_net_addr $(set_net_last $LXD_NET_IP 1)):443'
+  cluster_certificate: |
+$(printf '%s' "$cluster_cert" | sed -r 's|^(.+)$|    \1|')
+EOF
         set -x
     fi
 
@@ -99,7 +171,8 @@ make_overlay() {
 mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
-CMDLINE="console=ttyS0 noapic reboot=k panic=1"
+REPLICA="$(k8s_replica $(hostname))"
+CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA"
 
 setup_network
 make_overlay

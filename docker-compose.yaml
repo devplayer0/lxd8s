@@ -1,19 +1,22 @@
 version: '3'
 services:
   n0: &node
-    image: ghcr.io/netsoc/lxd8s
+    image: ghcr.io/netsoc/lxd8s:latest
     build:
       context: .
       args:
-        - KERNEL_VERSION=5.4.61
+        - KERNEL_VERSION=5.4.63
         - FIRECRACKER_VERSION=0.22.0
-        - FIRECTL_VERSION=0.1.0
     environment:
       - CPUS=4
       - MEM=2048
+    ports:
+      - 8443:443
+      - 8080:8080
     cap_add:
       - NET_ADMIN
     devices:
       - /dev/kvm
     tty: true
     stdin_open: true
+    hostname: blah-0

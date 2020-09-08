@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+
+command="/usr/local/bin/livenessd"
+command_args="${LIVENESSD_OPTIONS}"
+command_background="true"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+	need net
+    before lxd-init
+}

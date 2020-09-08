@@ -32,6 +32,9 @@ spec:
           image: '{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}'
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
+            - name: FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS
+              value: {{ .Values.firectlTimeout | quote }}
+
             - name: LXD_DATA
               value: /dev/lxd
             - name: LXD_STORAGE
@@ -40,16 +43,36 @@ spec:
               value: {{ .Values.vm.cpus | quote }}
             - name: MEM
               value: {{ .Values.vm.memory | quote }}
-            - name: FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS
-              value: {{ .Values.firectlTimeout | quote }}
-            - name: CERT_SECRET_BASE
-              value: {{ include "lxd8s.fullname" . }}-cert-
+
+            - name: INET_HOST
+              value: {{ .Values.nat.host | quote }}
+            - name: INET_VM
+              value: {{ .Values.nat.vm | quote }}
+            - name: LXD_NET
+              value: {{ .Values.network | quote }}
+
             - name: KUBELAN
               value: 'yes'
+            - name: CERT_SECRET_BASE
+              value: {{ include "lxd8s.fullname" . }}-cert-
           ports:
+            - name: liveness
+              containerPort: 8080
+              protocol: TCP
             - name: https
               containerPort: 443
               protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /liveness
+              port: liveness
+            {{- toYaml .Values.startupProbe | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: liveness
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeDevices:
@@ -57,6 +80,9 @@ spec:
               devicePath: /dev/lxd
             - name: storage
               devicePath: /dev/storage
+          volumeMounts:
+            - name: preseed
+              mountPath: /run/config
           stdin: true
           tty: true
         - name: kubelan
@@ -71,10 +97,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+          ports:
+            - name: http
+              containerPort: 8181
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /health
-              port: 8181
+              port: http
             periodSeconds: 5
           securityContext:
             capabilities:
@@ -82,7 +112,11 @@ spec:
           volumeMounts:
             - name: kubelan-config
               mountPath: /run/config
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       volumes:
+        - name: preseed
+          configMap:
+            name: {{ include "lxd8s.fullname" . }}-preseed
         - name: kubelan-config
           configMap:
             name: {{ include "lxd8s.fullname" . }}-kubelan

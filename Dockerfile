@@ -2,14 +2,16 @@ FROM alpine:3.12 AS kernel_builder
 ARG KERNEL_VERSION
 
 RUN apk --no-cache add gcc make musl-dev bison flex linux-headers elfutils-dev \
-    diffutils openssl openssl-dev perl
+    diffutils openssl openssl-dev perl patch
 
 WORKDIR /build
 RUN wget "https://cdn.kernel.org/pub/linux/kernel/$(echo $KERNEL_VERSION | \
         sed -r 's|^([0-9])\.[0-9]+(\.[0-9]+)?|v\1.x|')/linux-$KERNEL_VERSION.tar.xz"
 
+COPY kernel-virtnet-no-lro-config.patch /build/
 COPY kernel_config /build/.config
 RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
+    for p in *.patch; do patch -d "linux-$KERNEL_VERSION/" -p1 < "$p"; done && \
     mv .config "linux-$KERNEL_VERSION/" && \
     make -C "linux-$KERNEL_VERSION/" -j$(nproc) vmlinux && \
     mv "linux-$KERNEL_VERSION/vmlinux" ./ && \
@@ -29,9 +31,17 @@ RUN cd aports/community/lxcfs && \
 
 ###
 
+FROM golang:1.15-alpine AS liveness_builder
+
+WORKDIR /go/src/liveness
+COPY livenessd.go ./
+
+RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/livenessd livenessd.go
+
+
 FROM alpine:3.12 AS rootfs
 
-RUN apk --no-cache add alpine-base e2fsprogs
+RUN apk --no-cache add alpine-base iproute2 e2fsprogs curl jq
 
 COPY --from=lxcfs_builder /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
 COPY --from=lxcfs_builder /home/builder/packages /packages
@@ -46,20 +56,17 @@ RUN rm /sbin/modprobe && \
     sed -i 's|#rc_cgroup_mode=".*"|rc_cgroup_mode="hybrid"|' /etc/rc.conf && \
     sed -i 's|#rc_cgroup_memory_use_hierarchy=".*"|rc_cgroup_memory_use_hierarchy="YES"|' /etc/rc.conf && \
     echo 'cgroup_hierarchy_name="systemd"' > /etc/conf.d/cgroups && \
-    echo 'opts="hostname inet_mtu inet_addr inet_gw lxd_mtu"' > /etc/conf.d/cmdline && \
+    echo 'opts="hostname inet_mtu inet_addr inet_gw lxd_addr lxd_mtu k8s_replica"' > /etc/conf.d/cmdline && \
+    echo 'LIVENESSD_OPTIONS="-listen :8080"' > /etc/conf.d/livenessd && \
     #
     echo ttyS0 >> /etc/securetty && \
     sed -ri 's|^#ttyS0(.+)ttyS0|ttyS0\1-l /bin/autologin ttyS0|' /etc/inittab
 
 COPY scripts/modprobe /sbin/modprobe
 COPY scripts/autologin /bin/autologin
+COPY --from=liveness_builder /go/bin/livenessd /usr/local/bin/livenessd
 
-COPY openrc/cgroups /etc/init.d/cgroups
-COPY openrc/cmdline /etc/init.d/cmdline
-COPY openrc/noop /etc/init.d/noop
-COPY openrc/lxd-data /etc/init.d/lxd-data
-COPY openrc/overlay /etc/init.d/overlay
-COPY openrc/lxd8snet /etc/init.d/lxd8snet
+COPY openrc/* /etc/init.d/
 
 RUN rc-update add devfs sysinit && \
     rc-update add sysfs sysinit && \
@@ -78,7 +85,9 @@ RUN rc-update add devfs sysinit && \
     rc-update add mount-ro shutdown && \
     #
     rc-update add lxcfs default && \
-    rc-update add lxd default
+    rc-update add lxd default && \
+    rc-update add lxd-init default && \
+    rc-update add livenessd default
 
 RUN ln -sf /etc/init.d/noop /etc/init.d/modules && \
     ln -sf /etc/init.d/noop /etc/init.d/clock && \
@@ -111,9 +120,11 @@ RUN LIBGUESTFS_PATH=appliance/ guestfish \
 
 FROM alpine:3.12
 ARG FIRECRACKER_VERSION
-ARG FIRECTL_VERSION
 
-RUN apk --no-cache add iproute2 curl jq
+RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
+RUN apk --no-cache add iproute2 curl sed jq
+RUN apk --no-cache add yq@edge
 
 RUN apk --no-cache add libc6-compat
 RUN wget -O /usr/local/bin/firecracker \
@@ -127,20 +138,21 @@ COPY --from=kernel_builder /build/vmlinux ./vmlinux
 COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 
 COPY k8s.sh /usr/local/bin/k8s.sh
-
+RUN mkdir -p /run/config && echo '{}' > /run/config/preseed.yaml
 
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
 
-ENV CPUS=1
-ENV MEM=512
-ENV LXD_DATA=./lxd.img
-ENV LXD_STORAGE=./storage.img
+ENV CPUS=1 \
+    MEM=512 \
+    LXD_DATA=./lxd.img \
+    LXD_STORAGE=./storage.img
 
-ENV INET_HOST=192.168.69.1/30
-ENV INET_VM=192.168.69.2/30
+ENV INET_HOST=192.168.69.1/30 \
+    INET_VM=192.168.69.2/30 \
+    LXD_NET=172.20.0.0/16
 
-ENV KUBELAN=no
-ENV CERT_SECRET_BASE=
+ENV KUBELAN=no \
+    CERT_SECRET_BASE=
 
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]

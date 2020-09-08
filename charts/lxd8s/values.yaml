@@ -20,7 +20,28 @@ kubelan:
     vni: 7331
   hooks: {}
 
-imagePullSecrets: []
+nat:
+  host: 192.168.69.1/30
+  vm: 192.168.69.2/30
+
+network: '172.24.0.0/16'
+
+preseed:
+  config:
+    images.auto_update_cached: true
+    images.auto_update_interval: 6
+    images.remote_cache_expiry: 0
+  profiles:
+    - name: default
+      config:
+        boot.autostart: 'false'
+        limits.cpu: '1'
+        limits.memory: '256MiB'
+        security.nesting: 'true'
+      devices:
+        root:
+          size: 8GiB
+
 nameOverride: ''
 fullnameOverride: ''
 
@@ -29,6 +50,15 @@ podAnnotations: {}
 service:
   type: ClusterIP
   port: 443
+startupProbe:
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  periodSeconds: 3
+  failureThreshold: 100
+livenessProbe:
+  timeoutSeconds: 5
+  periodSeconds: 10
+terminationGracePeriodSeconds: 60
 
 resources:
   limits:
@@ -38,14 +68,14 @@ resources:
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
+vm:
+  cpus: 6
+  memory: 6144
+
+firectlTimeout: 30000
 nodeSelector: {}
 tolerations: []
 affinity: {}
-
-vm:
-  cpus: 8
-  memory: 12288
-firectlTimeout: 30000
 
 pvc:
   storageClass: ''

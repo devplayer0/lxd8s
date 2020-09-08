@@ -19,4 +19,10 @@ start() {
 
         do_mount
     fi
+
+    # The CA only gets symlinked on the bootstrap node...
+    [ -f "/var/lib/lxd/cluster.crt" ] && [ ! -f "/var/lib/lxd/cluster.ca" ] && \
+        ln -s server.ca "/var/lib/lxd/cluster.ca"
+
+    return 0
 }

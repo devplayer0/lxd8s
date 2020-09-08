@@ -1,0 +1,24 @@
+diff --git a/drivers/net/virtio_net.c b/drivers/net/virtio_net.c
+index 030d30603c29..268d79712571 100644
+--- a/drivers/net/virtio_net.c
++++ b/drivers/net/virtio_net.c
+@@ -2367,17 +2367,8 @@ static int virtnet_restore_up(struct virtio_device *vdev)
+ 
+ static int virtnet_set_guest_offloads(struct virtnet_info *vi, u64 offloads)
+ {
+-	struct scatterlist sg;
+-	vi->ctrl->offloads = cpu_to_virtio64(vi->vdev, offloads);
+-
+-	sg_init_one(&sg, &vi->ctrl->offloads, sizeof(vi->ctrl->offloads));
+-
+-	if (!virtnet_send_command(vi, VIRTIO_NET_CTRL_GUEST_OFFLOADS,
+-				  VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET, &sg)) {
+-		dev_warn(&vi->dev->dev, "Fail to set guest offload.\n");
+-		return -EINVAL;
+-	}
+-
++	// Big hack: Firecracker's implementation doesn't support
++	// `VIRTIO_NET_F_CTRL_VQ`
+ 	return 0;
+ }
+ 

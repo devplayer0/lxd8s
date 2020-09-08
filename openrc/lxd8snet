@@ -2,6 +2,7 @@
 description="Sets up networking in firecracker"
 iface_inet="${iface_inet:-eth0}"
 iface_lxd="${iface_lxd:-eth1}"
+iface_lxd_bridge="${iface_lxd_bridge:-lxd-lan}"
 
 depend() {
     provide net
@@ -26,13 +27,26 @@ start() {
     ip route add default via "$KOPT_inet_gw"
     eend $?
 
+    ebegin "Setting up LXD bridge $iface_lxd_bridge"
+    ip link add "$iface_lxd_bridge" type bridge && \
+    ip link set dev "$iface_lxd_bridge" up
+    eend $?
+
+    if [ -n "$KOPT_lxd_addr" ]; then
+        ebegin "Setting LXD bridge $iface_lxd_bridge IP address"
+        ip addr add "$KOPT_lxd_addr" dev "$iface_lxd_bridge"
+        eend $?
+    fi
+
     ebegin "Setting up LXD interface $iface_lxd"
-    ip link set dev "$iface_lxd" up
+    ip link set dev "$iface_lxd" up && \
+    ip link set dev "$iface_lxd" master "$iface_lxd_bridge"
     eend $?
 
     if [ -n "$KOPT_lxd_mtu" ]; then
-        ebegin "Setting LXD interface $iface_lxd MTU"
-        ip link set dev "$iface_lxd" mtu "$KOPT_lxd_mtu"
+        ebegin "Setting LXD interface $iface_lxd and bridge $iface_lxd_bridge MTU"
+        ip link set dev "$iface_lxd" mtu "$KOPT_lxd_mtu" && \
+        ip link set dev "$iface_lxd_bridge" mtu "$KOPT_lxd_mtu"
         eend $?
     fi
 }
