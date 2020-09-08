@@ -2,6 +2,7 @@
 description="Initializes LXD with a preseed file"
 preseed_file="${preseed_file:-/var/lib/lxd/preseed.json}"
 lxd_socket="${lxd_socket:-/var/lib/lxd/unix.socket}"
+max_attempts="${max_attempts:-30}"
 
 depend() {
 	need lxd
@@ -10,9 +11,13 @@ depend() {
 start() {
     ([ -e /var/lib/lxd/cluster.crt ] || [ ! -e "$preseed_file" ]) && return
 
+    attempts=0
     until curl -sf --max-time 1 --unix-socket "$lxd_socket" "http://lxd/" > /dev/null; do
         einfo "Waiting for LXD to be ready..."
         sleep 1
+
+        attempts="$(($attempts + 1))"
+        [ $attempts -eq $max_attempts ] && eerror "Timed out waiting for LXD" && return 1
     done
 
     ebegin "Initialising LXD with preseed file $preseed_file"
