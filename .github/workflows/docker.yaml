@@ -1,0 +1,33 @@
+name: Docker Image
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+
+    env:
+      REPO: ghcr.io/netsoc/lxd8s
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Log into GHCR
+        run: |
+          echo "Logging in as $GITHUB_ACTOR"
+          echo "${{ secrets.CR_PAT }}" | \
+            docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Pull current image
+        run: docker-compose pull
+
+      - name: Build image
+        run: |
+          docker-compose build
+          docker tag "$REPO:latest" "$REPO:$GITHUB_SHA"
+
+      - name: Push image
+        run: docker push "$REPO"
