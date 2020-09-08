@@ -63,11 +63,11 @@ terminationGracePeriodSeconds: 60
 resources:
   limits:
     hostdev.k8s.io/dev_kvm: 1
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+    cpu: 8000m
+    memory: 8192Mi
+  requests:
+    cpu: 6000m
+    memory: 6144Mi
 vm:
   cpus: 6
   memory: 6144
