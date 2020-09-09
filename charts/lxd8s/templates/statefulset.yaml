@@ -54,7 +54,7 @@ spec:
             - name: KUBELAN
               value: 'yes'
             - name: CERT_SECRET_BASE
-              value: {{ include "lxd8s.fullname" . }}-cert-
+              value: '{{ include "lxd8s.fullname" . }}-cert-'
           ports:
             - name: liveness
               containerPort: 8080

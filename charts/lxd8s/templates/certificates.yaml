@@ -5,7 +5,7 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: {{ print (include "lxd8s.fullname" $dot) "-cert-" $i }}
+  name: {{ print (include "lxd8s.fullname" $dot) "-" $i }}
 spec:
   secretName: {{ print (include "lxd8s.fullname" $dot) "-cert-" $i }}
   duration: {{ $vals.certs.duration }}
@@ -31,6 +31,7 @@ spec:
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}
+    - {{ include "lxd8s.fullname" $dot }}
   issuerRef:
     kind: Issuer
     name: {{ include "lxd8s.fullname" $dot }}-ca
