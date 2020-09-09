@@ -56,3 +56,10 @@ Create the name of the service account to use
 {{- define "lxd8s.serviceAccountName" -}}
 {{- include "lxd8s.fullname" . }}
 {{- end }}
+
+{{- define "hostSNI" }}
+{{- $last := sub (len .) 1 }}
+{{- range $i, $h := . -}}
+HostSNI(`{{ $h }}`){{- if ne $i $last }} || {{ end -}}
+{{- end  }}
+{{- end }}

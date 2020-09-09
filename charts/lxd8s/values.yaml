@@ -50,6 +50,10 @@ podAnnotations: {}
 service:
   type: ClusterIP
   port: 443
+ingressRoute:
+  enabled: false
+  hosts: []
+
 startupProbe:
   initialDelaySeconds: 5
   timeoutSeconds: 5
