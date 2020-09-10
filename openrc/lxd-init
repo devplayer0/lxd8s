@@ -17,7 +17,7 @@ start() {
         sleep 1
 
         attempts="$(($attempts + 1))"
-        [ $attempts -eq $max_attempts ] && eerror "Timed out waiting for LXD" && return 1
+        [ $attempts -eq $max_attempts ] && eerror "Timed out waiting for LXD" && exit 1
     done
 
     ebegin "Initialising LXD with preseed file $preseed_file"
