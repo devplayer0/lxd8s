@@ -36,9 +36,17 @@ spec:
               value: {{ .Values.firectlTimeout | quote }}
 
             - name: LXD_DATA
+            {{- if .Values.pvc.lxd.imgOnFilesystem }}
+              value: /mnt/lxd/disk.img
+            {{- else }}
               value: /dev/lxd
+            {{- end }}
             - name: LXD_STORAGE
+            {{- if .Values.pvc.storage.imgOnFilesystem }}
+              value: /mnt/storage/disk.img
+            {{- else }}
               value: /dev/storage
+            {{- end }}
             - name: CPUS
               value: {{ .Values.vm.cpus | quote }}
             - name: MEM
@@ -76,13 +84,21 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeDevices:
-            - name: lxd
-              devicePath: /dev/lxd
-            - name: storage
-              devicePath: /dev/storage
+          {{- range $name, $vals := .Values.pvc }}
+            {{- if not $vals.imgOnFilesystem }}
+            - name: {{ $name }}
+              devicePath: /dev/{{ $name }}
+            {{- end }}
+          {{- end }}
           volumeMounts:
             - name: preseed
               mountPath: /run/config
+          {{- range $name, $vals := .Values.pvc }}
+            {{- if $vals.imgOnFilesystem }}
+            - name: {{ $name }}
+              mountPath: /mnt/{{ $name }}
+            {{- end }}
+          {{- end }}
           stdin: true
           tty: true
         - name: kubelan
@@ -133,25 +149,21 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
+    {{- $dot := . }}
+    {{- range $name, $vals := .Values.pvc }}
     - metadata:
-        name: lxd
+        name: {{ $name }}
       spec:
-        {{- if .Values.pvc.storageClass }}
-        storageClassName: {{ .Values.pvc.storageClass }}
-        {{- end }}
+      {{- if $dot.storageClass }}
+        storageClassName: {{ $dot.storageClass }}
+      {{- end }}
         accessModes: [ReadWriteOnce]
+      {{- if $vals.imgOnFilesystem }}
+        volumeMode: Filesystem
+      {{- else }}
         volumeMode: Block
+      {{- end }}
         resources:
           requests:
-            storage: {{ .Values.pvc.lxd.size | quote }}
-    - metadata:
-        name: storage
-      spec:
-        {{- if .Values.pvc.storageClass }}
-        storageClassName: {{ .Values.pvc.storageClass }}
-        {{- end }}
-        accessModes: [ReadWriteOnce]
-        volumeMode: Block
-        resources:
-          requests:
-            storage: {{ .Values.pvc.storage.size | quote }}
+            storage: {{ $vals.size | quote }}
+    {{- end }}

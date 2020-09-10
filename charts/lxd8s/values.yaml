@@ -81,12 +81,14 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
+storageClass: ''
 pvc:
-  storageClass: ''
   lxd:
     size: 8Gi
+    imgOnFilesystem: false
   storage:
     size: 64Gi
+    imgOnFilesystem: false
 
 ca:
   key: ''
