@@ -31,6 +31,9 @@ spec:
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}.{{ include "lxd8s.fullname" $dot }}
     - {{ include "lxd8s.fullname" $dot }}-{{ $i }}
+    - {{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}.svc.{{ $vals.clusterDomain }}
+    - {{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}.svc
+    - {{ include "lxd8s.fullname" $dot }}.{{ $dot.Release.Namespace }}
     - {{ include "lxd8s.fullname" $dot }}
   issuerRef:
     kind: Issuer
