@@ -1,6 +1,4 @@
-clusterDomain: cluster.local
 replicaCount: 1
-certCount: 1
 
 image:
   repository: ghcr.io/netsoc/lxd8s
@@ -8,44 +6,13 @@ image:
   # Overrides the image tag whose default is the chart appVersion.
   tag: ''
 
-kubelan:
-  image:
-    repository: ghcr.io/devplayer0/kubelan
-    pullPolicy: IfNotPresent
-    tag: v0.2.0
-  log_level: DEBUG
-  extraServices: []
-  vxlan:
-    interface: lxd-overlay
-    vni: 7331
-  hooks: {}
-
-nat:
-  host: 192.168.69.1/30
-  vm: 192.168.69.2/30
-
-network: '172.24.0.0/16'
-
-preseed:
-  config:
-    images.auto_update_cached: true
-    images.auto_update_interval: 6
-    images.remote_cache_expiry: 0
-  profiles:
-    - name: default
-      config:
-        boot.autostart: 'false'
-        limits.cpu: '1'
-        limits.memory: '256MiB'
-        security.nesting: 'true'
-      devices:
-        root:
-          size: 8GiB
-
 nameOverride: ''
 fullnameOverride: ''
 
 podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
 
 service:
   type: ClusterIP
@@ -64,6 +31,21 @@ livenessProbe:
   periodSeconds: 10
 terminationGracePeriodSeconds: 60
 
+clusterDomain: cluster.local
+certCount: 1
+certs:
+  duration: 87600h # 10 years
+  renewBefore: 360h # 15 days
+  key:
+    algorithm: RSA
+    encoding: PKCS1
+    size: 2048
+  subject:
+    countries: [IE]
+ca:
+  key: ''
+  cert: ''
+
 resources:
   limits:
     hostdev.k8s.io/dev_kvm: 1
@@ -75,11 +57,7 @@ resources:
 vm:
   cpus: 4
   memory: 2048
-
 firectlTimeout: 30000
-nodeSelector: {}
-tolerations: []
-affinity: {}
 
 storageClass: ''
 pvc:
@@ -90,16 +68,35 @@ pvc:
     size: 64Gi
     imgOnFilesystem: false
 
-ca:
-  key: ''
-  cert: ''
+kubelan:
+  image:
+    repository: ghcr.io/devplayer0/kubelan
+    pullPolicy: IfNotPresent
+    tag: v0.2.0
+  log_level: DEBUG
+  extraServices: []
+  vxlan:
+    interface: lxd-overlay
+    vni: 7331
+  hooks: {}
 
-certs:
-  duration: 87600h # 10 years
-  renewBefore: 360h # 15 days
-  key:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  subject:
-    countries: [IE]
+nat:
+  host: 192.168.69.1/30
+  vm: 192.168.69.2/30
+network: '172.24.0.0/16'
+
+preseed:
+  config:
+    images.auto_update_cached: true
+    images.auto_update_interval: 6
+    images.remote_cache_expiry: 0
+  profiles:
+    - name: default
+      config:
+        boot.autostart: 'false'
+        limits.cpu: '1'
+        limits.memory: '256MiB'
+        security.nesting: 'true'
+      devices:
+        root:
+          size: 8GiB
