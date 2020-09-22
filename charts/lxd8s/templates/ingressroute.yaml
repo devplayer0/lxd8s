@@ -6,8 +6,6 @@ metadata:
   labels:
     {{- include "lxd8s.labels" . | nindent 4 }}
 spec:
-  #entryPoints:
-  #  - footcp
   routes:
     - match: '{{ include "hostSNI" .Values.ingressRoute.hosts }}'
       services:
