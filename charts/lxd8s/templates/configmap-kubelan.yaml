@@ -1,3 +1,4 @@
+{{- if not .Values.global.kubelan.externalConfigMap }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,17 +7,18 @@ metadata:
     {{- include "lxd8s.labels" . | nindent 4 }}
 data:
   kubelan.yaml: |
-    log_level: {{ .Values.kubelan.log_level }}
+    log_level: {{ .Values.global.kubelan.log_level }}
     services:
       - {{ include "lxd8s.fullname" . }}
-    {{- range $s := .Values.kubelan.extraServices }}
+    {{- range $s := .Values.global.kubelan.extraServices }}
       - {{ $s }}
     {{- end }}
-    {{- with .Values.kubelan.vxlan }}
+    {{- with .Values.global.kubelan.vxlan }}
     vxlan:
       {{- toYaml . | nindent 6 }}
     {{- end }}
-    {{- with .Values.kubelan.hooks }}
+    {{- with .Values.global.kubelan.hooks }}
     hooks:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+{{- end }}

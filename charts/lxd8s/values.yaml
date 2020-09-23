@@ -68,17 +68,20 @@ pvc:
     size: 64Gi
     imgOnFilesystem: false
 
-kubelan:
-  image:
-    repository: ghcr.io/devplayer0/kubelan
-    pullPolicy: IfNotPresent
-    tag: v0.2.0
-  log_level: DEBUG
-  extraServices: []
-  vxlan:
-    interface: lxd-overlay
-    vni: 7331
-  hooks: {}
+global:
+  kubelan:
+    image:
+      repository: ghcr.io/devplayer0/kubelan
+      pullPolicy: IfNotPresent
+      tag: 0.2.1
+    externalConfigMap:
+
+    log_level: DEBUG
+    extraServices: []
+    vxlan:
+      interface: lxd-overlay
+      vni: 7331
+    hooks: {}
 
 nat:
   host: 192.168.69.1/30

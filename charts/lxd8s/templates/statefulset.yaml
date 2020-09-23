@@ -102,8 +102,8 @@ spec:
           stdin: true
           tty: true
         - name: kubelan
-          image: '{{ .Values.kubelan.image.repository }}:{{ .Values.kubelan.image.tag }}'
-          imagePullPolicy: {{ .Values.kubelan.image.pullPolicy }}
+          image: '{{ .Values.global.kubelan.image.repository }}:{{ .Values.global.kubelan.image.tag }}'
+          imagePullPolicy: {{ .Values.global.kubelan.image.pullPolicy }}
           env:
             - name: KL_IP
               valueFrom:
@@ -135,7 +135,11 @@ spec:
             name: {{ include "lxd8s.fullname" . }}-preseed
         - name: kubelan-config
           configMap:
+          {{- if .Values.global.kubelan.externalConfigMap }}
+            name: {{ .Values.global.kubelan.externalConfigMap }}
+          {{- else }}
             name: {{ include "lxd8s.fullname" . }}-kubelan
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
