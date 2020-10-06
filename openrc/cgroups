@@ -33,10 +33,9 @@ cgroup1_base()
     fi
 
     if ! mountinfo -q "/sys/fs/cgroup/${cgroup_hierarchy_name}"; then
-        local agent="${RC_LIBEXECDIR}/sh/cgroup-release-agent.sh"
         mkdir "/sys/fs/cgroup/${cgroup_hierarchy_name}"
         mount -n -t cgroup \
-            -o none,${cgroup_opts},name="${cgroup_hierarchy_name}",release_agent="$agent" \
+            -o none,${cgroup_opts},name="${cgroup_hierarchy_name}" \
             ${cgroup_hierarchy_name} "/sys/fs/cgroup/${cgroup_hierarchy_name}"
         printf 1 > /sys/fs/cgroup/"${cgroup_hierarchy_name}"/notify_on_release
     fi
