@@ -51,11 +51,16 @@ cgroup1_controllers()
             1)	mountinfo -q "/sys/fs/cgroup/${name}" && continue
                 local x
                 for x in $rc_cgroup_controllers; do
-                [ "${name}" = "blkio" ] && [ "${x}" = "io" ] &&
-                    continue 2
-                [ "${name}" = "${x}" ] &&
-                continue 2
+                    [ "${name}" = "blkio" ] && [ "${x}" = "io" ] && continue 2
+                    [ "${name}" = "${x}" ] && continue 2
                 done
+
+                # HACK to mimic systemd cgroups
+                [ "${name}" = "net_cls" ] && name="net_cls,net_prio"
+                [ "${name}" = "net_prio" ] && continue
+                [ "${name}" = "cpu" ] && name="cpu,cpuacct"
+                [ "${name}" = "cpuacct" ] && continue
+
                 mkdir "/sys/fs/cgroup/${name}"
                 mount -n -t cgroup -o "${cgroup_opts},${name}" \
                     "${name}" "/sys/fs/cgroup/${name}"
