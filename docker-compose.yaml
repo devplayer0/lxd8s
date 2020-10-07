@@ -5,7 +5,7 @@ services:
     build:
       context: .
       args:
-        - KERNEL_VERSION=5.4.66
+        - KERNEL_VERSION=5.4.69
         - FIRECRACKER_VERSION=0.22.0
     environment:
       - CPUS=4
