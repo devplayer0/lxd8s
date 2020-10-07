@@ -63,6 +63,11 @@ spec:
               value: 'yes'
             - name: CERT_SECRET_BASE
               value: '{{ include "lxd8s.fullname" . }}-cert-'
+
+            - name: OOM_INTERVAL
+              value: {{ .Values.oomInterval | squote }}
+            - name: OOM_MIN_FREE
+              value: {{ .Values.oomMinFree | squote }}
           ports:
             - name: liveness
               containerPort: 8080
