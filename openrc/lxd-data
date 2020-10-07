@@ -3,7 +3,7 @@ description="Sets up LXD data volume"
 dev="${dev:-/dev/vdb}"
 
 depend() {
-	before overlay lxd
+    before overlay lxd
 }
 
 do_mount() {

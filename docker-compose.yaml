@@ -10,9 +10,11 @@ services:
     environment:
       - CPUS=4
       - MEM=2048
+      - OOM_INTERVAL=5s
+      - OOM_MIN_FREE=4096
     ports:
-      - 8443:443
-      - 8080:8080
+      - 8444:443
+      - 8082:8080
     cap_add:
       - NET_ADMIN
     devices:

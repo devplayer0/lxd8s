@@ -5,7 +5,7 @@ lxd_socket="${lxd_socket:-/var/lib/lxd/unix.socket}"
 max_attempts="${max_attempts:-30}"
 
 depend() {
-	need lxd
+    need lxd
 }
 
 start() {
