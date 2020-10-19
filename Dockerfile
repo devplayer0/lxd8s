@@ -72,6 +72,7 @@ RUN rc-update add devfs sysinit && \
     rc-update add sysfs sysinit && \
     rc-update add procfs sysinit && \
     rc-update add cgroups sysinit && \
+    rc-update add mdev sysinit && \
     rc-update add cmdline sysinit && \
     rc-update add lxd-data sysinit && \
     rc-update add overlay sysinit && \
