@@ -48,7 +48,7 @@ jobs:
             ${{ env.REPO }}:${{ github.sha }}
             ${{ env.REPO }}:latest
           build-args: |
-            KERNEL_VERSION=5.4.71
+            KERNEL_VERSION=5.4.72
             FIRECRACKER_VERSION=0.22.1
 
       # Pushing to an existing tag doesn't seem to work with buildx :(

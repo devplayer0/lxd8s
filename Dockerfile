@@ -17,20 +17,6 @@ RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     mv "linux-$KERNEL_VERSION/vmlinux" ./ && \
     rm -r "linux-$KERNEL_VERSION/"
 
-### UNTIL LXCFS IS RELEASED UPSTREAM AND UPDATED IN ALPINE
-
-FROM alpinelinux/docker-abuild AS lxcfs_builder
-
-RUN git clone https://gitlab.alpinelinux.org/alpine/aports
-
-COPY patches/alpine-lxcfs-dirname.patch lxcfs.patch
-RUN cd aports/community/lxcfs && \
-    git checkout 90fdadb3c5e71d749ff24454a6bebb322c851968 && \
-    git apply ~/lxcfs.patch && \
-    /home/builder/entrypoint.sh -r
-
-###
-
 FROM golang:1.15-alpine AS liveness_builder
 
 WORKDIR /go/src/liveness
@@ -43,12 +29,10 @@ FROM alpine:3.12 AS rootfs
 
 RUN apk --no-cache add alpine-base iproute2 e2fsprogs curl jq
 
-COPY --from=lxcfs_builder /home/builder/.abuild/*.rsa.pub /etc/apk/keys/
-COPY --from=lxcfs_builder /home/builder/packages /packages
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    sed -i '1s|^|/packages/community\n|' /etc/apk/repositories && \
-    apk --no-cache add lxcfs lxd nftables btrfs-progs && \
-    rm /packages/*/x86_64/*
+RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
+    echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
+    apk --no-cache add lxcfs@edge lxd nftables btrfs-progs
 
 RUN rm /sbin/modprobe && \
     > /etc/fstab && \
