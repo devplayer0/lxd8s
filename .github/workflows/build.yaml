@@ -13,7 +13,7 @@ jobs:
 
     env:
       CR_PAT_USER: devplayer0
-      REPO: ghcr.io/netsoc/lxd8s
+      REPO: ghcr.io/devplayer0/lxd8s
 
     steps:
       - uses: actions/checkout@v2

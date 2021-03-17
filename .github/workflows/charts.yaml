@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      CHARTS_REPO: netsoc/charts
+      CHARTS_REPO: devplayer0/charts
 
     steps:
       - name: Checkout main repo

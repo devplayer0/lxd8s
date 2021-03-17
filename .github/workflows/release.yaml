@@ -11,7 +11,7 @@ jobs:
 
     env:
       CR_PAT_USER: devplayer0
-      DOCKER_REPO: ghcr.io/netsoc/lxd8s
+      DOCKER_REPO: ghcr.io/devplayer0/lxd8s
 
     steps:
       - name: Checkout code
