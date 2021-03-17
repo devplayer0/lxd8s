@@ -7,11 +7,12 @@ name: Release
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     env:
       CR_PAT_USER: devplayer0
       DOCKER_REPO: ghcr.io/devplayer0/lxd8s
+      TITLE: lxd8s
 
     steps:
       - name: Checkout code
@@ -36,8 +37,8 @@ jobs:
 
       - name: Tag Docker image
         run: |
-          docker pull "$DOCKER_REPO:${{ github.sha }}"
-          docker tag "$DOCKER_REPO:${{ github.sha }}" "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
+          docker pull "$DOCKER_REPO:latest"
+          docker tag "$DOCKER_REPO:latest" "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
           docker push "$DOCKER_REPO:${{ steps.vars.outputs.version }}"
 
       - name: Create Release
@@ -47,5 +48,5 @@ jobs:
           GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
         with:
           tag_name: ${{ github.ref }}
-          release_name: Release ${{ steps.vars.outputs.version }}
+          release_name: ${{ env.TITLE }} ${{ steps.vars.outputs.version }}
           body_path: release.md

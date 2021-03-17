@@ -9,7 +9,7 @@ on:
 
 jobs:
   docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
 
     env:
       CR_PAT_USER: devplayer0
@@ -38,6 +38,12 @@ jobs:
           username: ${{ env.CR_PAT_USER }}
           password: ${{ secrets.CI_PAT }}
 
+      - id: vars
+        name: Generate build vars
+        run: |
+          SHA="${{ github.sha }}"
+          echo "::set-output name=tag::"${SHA:0:8}-$(date +%s)Z""
+
       - name: Build
         uses: docker/build-push-action@v2
         with:
@@ -45,7 +51,7 @@ jobs:
           cache-to: type=local,dest=/tmp/.buildx-cache
           load: true
           tags: |
-            ${{ env.REPO }}:${{ github.sha }}
+            ${{ env.REPO }}:${{ steps.vars.outputs.tag }}
             ${{ env.REPO }}:latest
           build-args: |
             KERNEL_VERSION=5.4.105

@@ -148,3 +148,5 @@ ENV OOM_INTERVAL= \
 
 COPY entrypoint.sh /
 ENTRYPOINT ["/entrypoint.sh"]
+
+LABEL org.opencontainers.image.source https://github.com/devplayer0/lxd8s
