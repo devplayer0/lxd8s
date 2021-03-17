@@ -59,7 +59,7 @@ RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/livenessd livenessd.go
 
 FROM alpine:3.13 AS rootfs
 
-RUN apk --no-cache add alpine-base iproute2 e2fsprogs curl jq
+RUN apk --no-cache add alpine-base udev iproute2 e2fsprogs curl jq
 
 COPY --chown=root:root --from=lxd_builder /home/builder/.abuild/builder-*.rsa.pub /etc/apk/keys/
 COPY --chown=root:root --from=lxd_builder /home/builder/packages /var/lib/apk
@@ -88,7 +88,8 @@ RUN rc-update add devfs sysinit && \
     rc-update add sysfs sysinit && \
     rc-update add procfs sysinit && \
     rc-update add cgroups sysinit && \
-    rc-update add mdev sysinit && \
+    rc-update add udev-trigger sysinit && \
+    rc-update add udev sysinit && \
     rc-update add cmdline sysinit && \
     rc-update add lxd-data sysinit && \
     rc-update add overlay sysinit && \
@@ -101,6 +102,7 @@ RUN rc-update add devfs sysinit && \
     rc-update add killprocs shutdown && \
     rc-update add mount-ro shutdown && \
     #
+    rc-update add udev-postmount default && \
     rc-update add lxcfs default && \
     rc-update add lxd default && \
     rc-update add lxd-init default && \
