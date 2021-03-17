@@ -1,4 +1,4 @@
-FROM alpine:3.12 AS kernel_builder
+FROM alpine:3.13 AS kernel_builder
 ARG KERNEL_VERSION
 
 RUN apk --no-cache add gcc make musl-dev bison flex linux-headers elfutils-dev \
@@ -17,7 +17,8 @@ RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     mv "linux-$KERNEL_VERSION/vmlinux" ./ && \
     rm -r "linux-$KERNEL_VERSION/"
 
-FROM golang:1.15-alpine AS liveness_builder
+
+FROM golang:1.16-alpine AS liveness_builder
 
 WORKDIR /go/src/liveness
 COPY livenessd.go ./
@@ -25,7 +26,7 @@ COPY livenessd.go ./
 RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/livenessd livenessd.go
 
 
-FROM alpine:3.12 AS rootfs
+FROM alpine:3.13 AS rootfs
 
 RUN apk --no-cache add alpine-base iproute2 e2fsprogs curl jq
 
@@ -83,10 +84,11 @@ COPY conf/limits.conf /etc/security/limits.d/lxd.conf
 
 RUN echo 'LXD_OPTIONS="--logfile /var/lib/lxd/lxd.log"' >> /etc/conf.d/lxd
 
+
 FROM alpine:edge AS rootfs_img_builder
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk --no-cache add tar libguestfs
+    apk --no-cache add xz tar libguestfs
 
 WORKDIR /build
 
@@ -103,19 +105,21 @@ RUN LIBGUESTFS_PATH=appliance/ guestfish \
     rm -rf root/
 
 
-FROM alpine:3.12
+FROM alpine:3.13
 ARG FIRECRACKER_VERSION
+ARG FIRECTL_VERSION
 
-RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
-    echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories
-RUN apk --no-cache add iproute2 curl sed jq
-RUN apk --no-cache add yq@edge
+RUN apk --no-cache add iproute2 curl sed jq yq
 
 RUN apk --no-cache add libc6-compat
-RUN wget -O /usr/local/bin/firecracker \
-        "https://github.com/firecracker-microvm/firecracker/releases/download/v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64" && \
-    chmod +x /usr/local/bin/firecracker
-RUN wget -O /usr/local/bin/firectl "https://github.com/netsoc/firectl/releases/latest/download/firectl" && \
+RUN mkdir /tmp/firecracker && \
+    wget -O /tmp/firecracker/release.tar.gz \
+        "https://github.com/firecracker-microvm/firecracker/releases/download/v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64.tgz" && \
+    tar -C /tmp/firecracker -zxf /tmp/firecracker/release.tar.gz && \
+    mv "/tmp/firecracker/firecracker-v${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/firecracker && \
+    chmod +x /usr/local/bin/firecracker && \
+    rm -r /tmp/firecracker
+RUN wget -O /usr/local/bin/firectl "https://github.com/devplayer0/firectl/releases/download/v${FIRECTL_VERSION}/firectl" && \
     chmod +x /usr/local/bin/firectl
 
 WORKDIR /opt/lxd8s
