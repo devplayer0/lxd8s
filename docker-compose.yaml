@@ -12,7 +12,7 @@ services:
       - CPUS=4
       - MEM=2048
       - OOM_INTERVAL=5s
-      - OOM_MIN_FREE=4096
+      - OOM_MIN_FREE=1024
     ports:
       - 8444:443
       - 8082:8080

@@ -1,0 +1,43 @@
+diff --git a/testing/dqlite/APKBUILD b/testing/dqlite/APKBUILD
+index e6ca728053..09072fe2ee 100644
+--- a/testing/dqlite/APKBUILD
++++ b/testing/dqlite/APKBUILD
+@@ -8,7 +8,7 @@ url="https://dqlite.io/"
+ arch="all"
+ license="Apache"
+ depends="raft"
+-makedepends="libuv-dev sqlite-dev sqlite-replication-dev
++makedepends="libuv-dev sqlite-dev
+ raft-dev autoconf automake libtool"
+ subpackages="$pkgname-static $pkgname-dev $pkgname-doc"
+ source="$pkgname-$pkgver.tar.gz::https://github.com/canonical/dqlite/archive/v$pkgver.tar.gz"
+diff --git a/testing/lxd/APKBUILD b/testing/lxd/APKBUILD
+index 2875917151..105450d3e5 100644
+--- a/testing/lxd/APKBUILD
++++ b/testing/lxd/APKBUILD
+@@ -14,7 +14,6 @@ depends="
+ 	squashfs-tools
+ 	rsync
+ 	dqlite
+-	sqlite-replication
+ 	shadow-uidmap
+ 	lxc
+ 	ip6tables
+@@ -45,7 +44,6 @@ makedepends="
+ 	patchelf
+ 	dqlite-dev
+ 	dqlite-static
+-	sqlite-replication-dev
+ 	sqlite-dev
+ 	sqlite-static
+ 	raft-dev
+@@ -77,8 +75,7 @@ _project="github.com/lxc/lxd"
+ build() {
+ 	export GOPATH="$builddir/_dist"
+ 	export GOFLAGS="-buildmode=pie -trimpath"
+-	export CGO_CFLAGS="$CFLAGS -I/usr/include/sqlite-replication"
+-	export CGO_LDFLAGS="-lintl $LDFLAGS -L/usr/lib/sqlite-replication -Wl,-R/usr/lib/sqlite-replication"
++	export CGO_LDFLAGS="-lintl $LDFLAGS"
+ 	export CGO_LDFLAGS_ALLOW="-Wl,-wrap,pthread_create"
+ 	export GO111MODULE=off
+ 

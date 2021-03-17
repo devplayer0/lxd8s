@@ -18,6 +18,37 @@ RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     rm -r "linux-$KERNEL_VERSION/"
 
 
+FROM alpine:3.13 AS lxd_builder
+
+RUN apk add alpine-conf alpine-sdk sudo && \
+    setup-apkcache /var/cache/apk
+RUN adduser -D builder && \
+    addgroup builder abuild && \
+    echo 'builder ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers && \
+    sed -i '1s|^|/home/builder/packages/testing\n|' /etc/apk/repositories
+
+USER builder
+WORKDIR /home/builder
+
+# This commit is lxd 4.12
+RUN git clone https://gitlab.alpinelinux.org/alpine/aports && \
+    git -C aports checkout 536cd62aaa85cfd1e8d173878aa8f0b365a45a0c
+
+RUN USER=builder abuild-keygen -na && \
+    sudo cp -v "$HOME"/.abuild/builder-*.rsa.pub /etc/apk/keys/ && \
+    printf "JOBS=\$(nproc)\nMAKEFLAGS=-j\$JOBS\n" >> .abuild/abuild.conf
+
+COPY patches/alpine-lxd-no-sql-replication.patch .
+RUN git -C aports apply ../alpine-lxd-no-sql-replication.patch
+
+RUN cd aports/testing/raft && \
+    abuild -r
+RUN cd aports/testing/dqlite && \
+    abuild -r
+RUN cd aports/testing/lxd && \
+    abuild -r
+
+
 FROM golang:1.16-alpine AS liveness_builder
 
 WORKDIR /go/src/liveness
@@ -30,10 +61,10 @@ FROM alpine:3.13 AS rootfs
 
 RUN apk --no-cache add alpine-base iproute2 e2fsprogs curl jq
 
-RUN echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/main" >> /etc/apk/repositories && \
-    echo "@edge https://dl-cdn.alpinelinux.org/alpine/edge/community" >> /etc/apk/repositories && \
-    echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk --no-cache add lxcfs@edge lxd nftables btrfs-progs
+COPY --chown=root:root --from=lxd_builder /home/builder/.abuild/builder-*.rsa.pub /etc/apk/keys/
+COPY --chown=root:root --from=lxd_builder /home/builder/packages /var/lib/apk
+RUN sed -i '1s|^|/var/lib/apk/testing\n|' /etc/apk/repositories && \
+    apk --no-cache add lxcfs lxd nftables btrfs-progs
 
 RUN rm /sbin/modprobe && \
     > /etc/fstab && \
@@ -96,7 +127,7 @@ RUN wget https://download.libguestfs.org/binaries/appliance/appliance-1.40.1.tar
     tar -Jxf appliance-1.40.1.tar.xz
 COPY --from=rootfs / root/
 RUN LIBGUESTFS_PATH=appliance/ guestfish \
-        sparse rootfs.img 256M : \
+        sparse rootfs.img 512M : \
         launch : \
         mkfs ext4 /dev/sda label:root : \
         mount /dev/sda / : \
