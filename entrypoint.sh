@@ -115,7 +115,7 @@ EOF
     # Setup LXD preseed
     if [ $REPLICA -eq 0 ]; then
         set +x
-        yq merge -x /run/config/preseed.yaml - <<EOF | yq read -j - | jq . > /tmp/overlay/var/lib/lxd/preseed.json
+        yq eval-all -j 'select(fileIndex == 0) * select(fileIndex == 1)' /run/config/preseed.yaml - <<EOF > /tmp/overlay/var/lib/lxd/preseed.json
 config:
   core.https_address: '$inet_vm_addr:443'
   core.trust_ca_certificates: true
@@ -149,7 +149,7 @@ EOF
         set -x
     else
         set +
-        cat <<EOF | yq read -j - | jq . > /tmp/overlay/var/lib/lxd/preseed.json
+        yq eval -j . - <<EOF > /tmp/overlay/var/lib/lxd/preseed.json
 config:
   core.https_address: '$inet_vm_addr:443'
 

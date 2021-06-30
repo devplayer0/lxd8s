@@ -1,24 +1,25 @@
-FROM alpine:3.13 AS kernel_builder
+FROM alpine:3.14 AS kernel_builder
 ARG KERNEL_VERSION
 
 RUN apk --no-cache add gcc make musl-dev bison flex linux-headers elfutils-dev \
-    diffutils openssl openssl-dev perl patch
+    diffutils openssl openssl-dev perl patch findutils
 
 WORKDIR /build
 RUN wget "https://cdn.kernel.org/pub/linux/kernel/$(echo $KERNEL_VERSION | \
         sed -r 's|^([0-9])\.[0-9]+(\.[0-9]+)?|v\1.x|')/linux-$KERNEL_VERSION.tar.xz"
 
 COPY patches/kernel-virtnet-no-lro-config.patch /build/
-COPY kernel_config /build/.config
+COPY lxd8s.config /build/
 RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     for p in *.patch; do patch -d "linux-$KERNEL_VERSION/" -p1 < "$p"; done && \
-    mv .config "linux-$KERNEL_VERSION/" && \
+    mv lxd8s.config "linux-$KERNEL_VERSION/arch/x86/configs/" && \
+    make -C "linux-$KERNEL_VERSION/" defconfig lxd8s.config && \
     make -C "linux-$KERNEL_VERSION/" -j$(nproc) vmlinux && \
     mv "linux-$KERNEL_VERSION/vmlinux" ./ && \
     rm -r "linux-$KERNEL_VERSION/"
 
 
-FROM alpine:3.13 AS lxd_builder
+FROM alpine:3.14 AS lxd_builder
 
 RUN apk add alpine-conf alpine-sdk sudo && \
     setup-apkcache /var/cache/apk
@@ -30,13 +31,13 @@ RUN adduser -D builder && \
 USER builder
 WORKDIR /home/builder
 
-# This commit is lxd 4.12
+# This commit is lxd 4.15
 RUN git clone https://gitlab.alpinelinux.org/alpine/aports && \
-    git -C aports checkout 536cd62aaa85cfd1e8d173878aa8f0b365a45a0c
+    git -C aports checkout 402a656119b5b86edd9f01f3cb2b5b68d12d6396
 
 RUN USER=builder abuild-keygen -na && \
     sudo cp -v "$HOME"/.abuild/builder-*.rsa.pub /etc/apk/keys/ && \
-    printf "JOBS=\$(nproc)\nMAKEFLAGS=-j\$JOBS\n" >> .abuild/abuild.conf
+    printf "JOBS=\$(nproc)\nMAKEFLAGS=-j\$JOBS\n" >> "$HOME/.abuild/abuild.conf"
 
 COPY patches/alpine-lxd-no-sql-replication.patch .
 RUN git -C aports apply ../alpine-lxd-no-sql-replication.patch
@@ -49,7 +50,7 @@ RUN cd aports/testing/lxd && \
     abuild -r
 
 
-FROM golang:1.16-alpine AS liveness_builder
+FROM golang:1.16-alpine3.14 AS liveness_builder
 
 WORKDIR /go/src/liveness
 COPY livenessd.go ./
@@ -57,7 +58,7 @@ COPY livenessd.go ./
 RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/livenessd livenessd.go
 
 
-FROM alpine:3.13 AS rootfs
+FROM alpine:3.14 AS rootfs
 
 RUN apk --no-cache add alpine-base udev iproute2 e2fsprogs curl jq
 
@@ -118,27 +119,19 @@ COPY conf/limits.conf /etc/security/limits.d/lxd.conf
 RUN echo 'LXD_OPTIONS="--logfile /var/lib/lxd/lxd.log"' >> /etc/conf.d/lxd
 
 
-FROM alpine:edge AS rootfs_img_builder
+FROM alpine:3.14 AS rootfs_img_builder
 
 RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk --no-cache add xz tar libguestfs
+    apk --no-cache add e2fsprogs
 
 WORKDIR /build
 
-RUN wget https://download.libguestfs.org/binaries/appliance/appliance-1.40.1.tar.xz && \
-    tar -Jxf appliance-1.40.1.tar.xz
 COPY --from=rootfs / root/
-RUN LIBGUESTFS_PATH=appliance/ guestfish \
-        sparse rootfs.img 512M : \
-        launch : \
-        mkfs ext4 /dev/sda label:root : \
-        mount /dev/sda / : \
-        lcd root/ : \
-        copy-in . / && \
+RUN mkfs.ext4 -L root -d root/ rootfs.img 512M && \
     rm -rf root/
 
 
-FROM alpine:3.13
+FROM alpine:3.14
 ARG FIRECRACKER_VERSION
 ARG FIRECTL_VERSION
 
@@ -149,7 +142,7 @@ RUN mkdir /tmp/firecracker && \
     wget -O /tmp/firecracker/release.tar.gz \
         "https://github.com/firecracker-microvm/firecracker/releases/download/v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64.tgz" && \
     tar -C /tmp/firecracker -zxf /tmp/firecracker/release.tar.gz && \
-    mv "/tmp/firecracker/firecracker-v${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/firecracker && \
+    mv "/tmp/firecracker/release-v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/firecracker && \
     chmod +x /usr/local/bin/firecracker && \
     rm -r /tmp/firecracker
 RUN wget -O /usr/local/bin/firectl "https://github.com/devplayer0/firectl/releases/download/v${FIRECTL_VERSION}/firectl" && \

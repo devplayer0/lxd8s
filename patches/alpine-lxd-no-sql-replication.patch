@@ -1,5 +1,5 @@
 diff --git a/testing/dqlite/APKBUILD b/testing/dqlite/APKBUILD
-index e6ca728053..09072fe2ee 100644
+index b9a3dcb401..a7d94e5275 100644
 --- a/testing/dqlite/APKBUILD
 +++ b/testing/dqlite/APKBUILD
 @@ -8,7 +8,7 @@ url="https://dqlite.io/"
@@ -12,7 +12,7 @@ index e6ca728053..09072fe2ee 100644
  subpackages="$pkgname-static $pkgname-dev $pkgname-doc"
  source="$pkgname-$pkgver.tar.gz::https://github.com/canonical/dqlite/archive/v$pkgver.tar.gz"
 diff --git a/testing/lxd/APKBUILD b/testing/lxd/APKBUILD
-index 2875917151..105450d3e5 100644
+index 75c0a2a0d7..f4d5e461eb 100644
 --- a/testing/lxd/APKBUILD
 +++ b/testing/lxd/APKBUILD
 @@ -14,7 +14,6 @@ depends="
@@ -23,15 +23,15 @@ index 2875917151..105450d3e5 100644
  	shadow-uidmap
  	lxc
  	ip6tables
-@@ -45,7 +44,6 @@ makedepends="
- 	patchelf
+@@ -46,7 +45,6 @@ makedepends="
  	dqlite-dev
  	dqlite-static
+ 	lz4-dev
 -	sqlite-replication-dev
  	sqlite-dev
  	sqlite-static
  	raft-dev
-@@ -77,8 +75,7 @@ _project="github.com/lxc/lxd"
+@@ -78,8 +76,7 @@ _project="github.com/lxc/lxd"
  build() {
  	export GOPATH="$builddir/_dist"
  	export GOFLAGS="-buildmode=pie -trimpath"

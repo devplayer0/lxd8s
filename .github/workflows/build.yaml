@@ -54,8 +54,8 @@ jobs:
             ${{ env.REPO }}:${{ steps.vars.outputs.tag }}
             ${{ env.REPO }}:latest
           build-args: |
-            KERNEL_VERSION=5.4.105
-            FIRECRACKER_VERSION=0.24.2
+            KERNEL_VERSION=5.10.47
+            FIRECRACKER_VERSION=0.24.4
             FIRECTL_VERSION=0.1.3
 
       # Pushing to an existing tag doesn't seem to work with buildx :(
