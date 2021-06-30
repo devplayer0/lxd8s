@@ -50,12 +50,19 @@ RUN cd aports/testing/lxd && \
     abuild -r
 
 
-FROM golang:1.16-alpine3.14 AS liveness_builder
+FROM golang:1.16-alpine3.14 AS daemons_builder
+RUN apk --no-cache add make
 
-WORKDIR /go/src/liveness
-COPY livenessd.go ./
+WORKDIR /go/src/go-daemons
+COPY go-daemons/go.* ./
+RUN go mod download
 
-RUN CGO_ENABLED=0 go build -ldflags '-s -w' -o /go/bin/livenessd livenessd.go
+COPY go-daemons/cmd/ ./cmd/
+COPY go-daemons/internal/ ./internal/
+
+COPY go-daemons/Makefile ./
+
+RUN make
 
 
 FROM alpine:3.14 AS rootfs
@@ -81,7 +88,7 @@ RUN rm /sbin/modprobe && \
 
 COPY scripts/modprobe /sbin/modprobe
 COPY scripts/autologin /bin/autologin
-COPY --from=liveness_builder /go/bin/livenessd /usr/local/bin/livenessd
+COPY --from=daemons_builder /go/src/go-daemons/bin/livenessd /usr/local/bin/livenessd
 
 COPY openrc/* /etc/init.d/
 
