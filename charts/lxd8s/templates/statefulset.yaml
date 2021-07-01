@@ -64,6 +64,8 @@ spec:
             - name: CERT_SECRET_BASE
               value: '{{ include "lxd8s.fullname" . }}-cert-'
 
+            - name: LIVENESS_CLUSTER_LENIENCE
+              value: {{ .Values.livenessClusterLenience | squote }}
             - name: OOM_INTERVAL
               value: {{ .Values.oomInterval | squote }}
             - name: OOM_MIN_FREE

@@ -9,15 +9,17 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/devplayer0/lxd8s/go-daemons/internal/livenessd"
 )
 
 var (
-	addr        = flag.String("listen", ":8080", "listen address")
-	logToSyslog = flag.Bool("syslog", false, "write log messages to syslog")
-	oomInterval = flag.Duration("oom-interval", 0, "interval for OOM sweep, 0 to disable")
-	minFree     = flag.Uint64("oom-min-free", 64*1024*1024, "minimum amount of memory before shutting down instances")
+	addr                    = flag.String("listen", ":8080", "listen address")
+	logToSyslog             = flag.Bool("syslog", false, "write log messages to syslog")
+	livenessClusterLenience = flag.Duration("liveness-cluster-lenience", 5*time.Minute, "lenience perioid for initial cluster member readiness")
+	oomInterval             = flag.Duration("oom-interval", 0, "interval for OOM sweep, 0 to disable")
+	minFree                 = flag.Uint64("oom-min-free", 64*1024*1024, "minimum amount of memory before shutting down instances")
 )
 
 func main() {
@@ -34,6 +36,9 @@ func main() {
 
 	s := livenessd.NewServer(livenessd.Config{
 		HTTPAddress: *addr,
+
+		LivenessClusterLenience: *livenessClusterLenience,
+
 		OOMInterval: *oomInterval,
 		OOMMinFree:  *minFree,
 	}, logger)

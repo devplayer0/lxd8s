@@ -90,6 +90,7 @@ network: '172.24.0.0/16'
 
 oomInterval: '5s'
 oomMinFree: '64'
+livenessClusterLenience: '5m'
 
 preseed:
   config:

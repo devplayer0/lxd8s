@@ -38,6 +38,8 @@ type Config struct {
 	LXDSocket   string
 	HTTPAddress string
 
+	LivenessClusterLenience time.Duration
+
 	OOMInterval time.Duration
 	OOMMinFree  uint64
 }
@@ -46,6 +48,9 @@ type Server struct {
 	config  Config
 	logger  *log.Logger
 	replica int
+
+	// This represents the time at which an exception for cluster readiness was made
+	livenessClusterLenienceStart time.Time
 
 	lxd            *lxd.Client
 	livenessClient http.Client

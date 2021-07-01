@@ -172,7 +172,7 @@ mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
 REPLICA="$(k8s_replica $(hostname))"
-CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
+CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
 
 setup_network
 make_overlay

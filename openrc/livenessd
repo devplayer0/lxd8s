@@ -12,6 +12,7 @@ depend() {
 
 start_pre() {
     source /etc/cmdline
+    [ -n "$KOPT_liveness_cluster_lenience" ] && command_args="$command_args -liveness-cluster-lenience=$KOPT_liveness_cluster_lenience"
     [ -n "$KOPT_oom_interval" ] && command_args="$command_args -oom-interval=$KOPT_oom_interval"
     [ -n "$KOPT_oom_min_free" ] && command_args="$command_args -oom-min-free=$KOPT_oom_min_free"
 }
