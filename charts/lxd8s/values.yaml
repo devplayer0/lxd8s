@@ -48,10 +48,11 @@ ca:
 
 resources:
   limits:
-    hostdev.k8s.io/dev_kvm: 1
+    smarter-devices/kvm: 1
     cpu: 4000m
     memory: 3Gi
   requests:
+    smarter-devices/kvm: 1
     cpu: 4000m
     memory: 2Gi
 vm:
@@ -73,7 +74,7 @@ global:
     image:
       repository: ghcr.io/devplayer0/kubelan
       pullPolicy: IfNotPresent
-      tag: 0.2.2
+      tag: 0.2.3
     externalConfigMap:
 
     log_level: DEBUG
