@@ -1,1 +1,3 @@
 It deploy lol
+
+{{- include "lxd8s.checkRandomSecrets" . -}}

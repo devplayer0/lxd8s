@@ -5,11 +5,11 @@ lxd_socket="${lxd_socket:-/var/lib/lxd/unix.socket}"
 max_attempts="${max_attempts:-30}"
 
 depend() {
-    need lxd
+    after lxd
 }
 
 start() {
-    ([ -e /var/lib/lxd/cluster.crt ] || [ ! -e "$preseed_file" ]) && return
+    ([ -e /var/lib/lxd/server.crt ] || [ ! -e "$preseed_file" ]) && return
 
     attempts=0
     until curl -sf --max-time 1 --unix-socket "$lxd_socket" "http://lxd/" > /dev/null; do
@@ -20,9 +20,15 @@ start() {
         [ $attempts -eq $max_attempts ] && eerror "Timed out waiting for LXD" && exit 1
     done
 
+    source /etc/cmdline
+    [ $KOPT_k8s_replica -eq 0 ] && [ -e /var/lib/lxd/cluster.crt ] && \
+        (cd /var/lib/lxd && mv cluster.crt pki-cluster.crt && mv cluster.key pki-cluster.key)
+
     ebegin "Initialising LXD with preseed file $preseed_file"
     # Set the listen address first as in cluster join mode non-cluster config is ignored :(
     lxc config set core.https_address="$(jq -r '.config["core.https_address"]' < "$preseed_file")" && \
-    lxd init --preseed < "$preseed_file"
+    lxd init --preseed < "$preseed_file" && \
+    # Load the real cluster cert and key
+    (cd /var/lib/lxd && ([ ! -f pki-cluster.crt ] || (mv pki-cluster.crt cluster.crt && mv pki-cluster.key cluster.key && rc-service lxd restart)))
     eend $?
 }

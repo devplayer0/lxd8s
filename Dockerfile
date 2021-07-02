@@ -159,7 +159,6 @@ WORKDIR /opt/lxd8s
 COPY --from=kernel_builder /build/vmlinux ./vmlinux
 COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
 
-COPY scripts/k8s.sh /usr/local/bin/k8s.sh
 RUN mkdir -p /run/config && echo '{}' > /run/config/preseed.yaml
 
 ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
@@ -171,10 +170,10 @@ ENV CPUS=1 \
 
 ENV INET_HOST=192.168.69.1/30 \
     INET_VM=192.168.69.2/30 \
-    LXD_NET=172.20.0.0/16
+    LXD_NET=172.20.0.0/16 \
+    TRUST_PASSWORD=hunter22
 
-ENV KUBELAN=no \
-    CERT_SECRET_BASE=
+ENV KUBELAN=no
 
 ENV LIVENESS_CLUSTER_LENIENCE=5m \
     OOM_INTERVAL= \

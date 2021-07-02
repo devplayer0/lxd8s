@@ -13,10 +13,6 @@ b64() {
     base64 - | tr -d '\n'
 }
 
-extract_secret() {
-    printf '%s' $1 | jq -r .data[\"$2\"] | base64 -d
-}
-
 ensure_link_gone() {
     (ip link show "$1" > /dev/null 2>&1 && ip link del "$1") || true
 }
@@ -87,29 +83,9 @@ make_overlay() {
     # resolv.conf from host
     sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf > /tmp/overlay/etc/resolv.conf
 
-    # Import certificates from cert-manager ConfigMaps
-    if [ -n "$CERT_SECRET_BASE" ]; then
-        set +x
-        source k8s.sh
-        data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}${REPLICA}")"
-
-        extract_secret "$data" "ca.crt" > /tmp/overlay/var/lib/lxd/server.ca
-        extract_secret "$data" "tls.crt" > /tmp/overlay/var/lib/lxd/server.crt
-        extract_secret "$data" "tls.key" > /tmp/overlay/var/lib/lxd/server.key
-
-        # We need replica 0 (the bootstrap node) cert to join the cluster
-        if [ $REPLICA -ne 0 ]; then
-            data="$(k8s_get "api/v1/namespaces/$K8S_NAMESPACE/secrets/${CERT_SECRET_BASE}0")"
-            cluster_cert="$(extract_secret "$data" "tls.crt")"
-        fi
-        set -x
-    elif [ $REPLICA -ne 0 ]; then
-        cluster_cert="$(cat <<EOF
------BEGIN CERTIFICATE-----
-IDK SOME GARBAGE
------END CERTIFICATE-----
-EOF
-)"
+    if [ -f /run/cluster_cert/tls.crt ]; then
+        cp /run/cluster_cert/tls.crt /tmp/overlay/var/lib/lxd/cluster.crt
+        cp /run/cluster_cert/tls.key /tmp/overlay/var/lib/lxd/cluster.key
     fi
 
     # Setup LXD preseed
@@ -117,8 +93,8 @@ EOF
         set +x
         yq eval-all -j 'select(fileIndex == 0) * select(fileIndex == 1)' /run/config/preseed.yaml - <<EOF > /tmp/overlay/var/lib/lxd/preseed.json
 config:
+  core.trust_password: '$TRUST_PASSWORD'
   core.https_address: '$inet_vm_addr:443'
-  core.trust_ca_certificates: true
   cluster.https_address: '$(ip_net_addr $LXD_NET_IP):443'
 
 cluster:
@@ -158,8 +134,8 @@ cluster:
   server_name: '$(hostname)'
   server_address: '$(ip_net_addr $LXD_NET_IP):443'
   cluster_address: '$(ip_net_addr $(set_net_last $LXD_NET_IP 1)):443'
-  cluster_certificate: |
-$(printf '%s' "$cluster_cert" | sed -r 's|^(.+)$|    \1|')
+  cluster_certificate_path: /var/lib/lxd/cluster.crt
+  cluster_password: '$TRUST_PASSWORD'
 EOF
         set -x
     fi

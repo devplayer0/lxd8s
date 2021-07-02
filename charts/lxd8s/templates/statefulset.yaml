@@ -61,8 +61,8 @@ spec:
 
             - name: KUBELAN
               value: 'yes'
-            - name: CERT_SECRET_BASE
-              value: '{{ include "lxd8s.fullname" . }}-cert-'
+            - name: TRUST_PASSWORD
+              value: {{ .Values.trustPassword | default (randAlphaNum 16) | squote }}
 
             - name: LIVENESS_CLUSTER_LENIENCE
               value: {{ .Values.livenessClusterLenience | squote }}
@@ -100,6 +100,8 @@ spec:
           volumeMounts:
             - name: preseed
               mountPath: /run/config
+            - name: cluster-cert
+              mountPath: /run/cluster_cert
           {{- range $name, $vals := .Values.pvc }}
             {{- if $vals.imgOnFilesystem }}
             - name: {{ $name }}
@@ -140,6 +142,9 @@ spec:
         - name: preseed
           configMap:
             name: {{ include "lxd8s.fullname" . }}-preseed
+        - name: cluster-cert
+          secret:
+            secretName: {{ .Values.clusterCertSecret | squote }}
         - name: kubelan-config
           configMap:
           {{- if .Values.global.kubelan.externalConfigMap }}
@@ -160,13 +165,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
   volumeClaimTemplates:
-    {{- $dot := . }}
     {{- range $name, $vals := .Values.pvc }}
     - metadata:
         name: {{ $name }}
       spec:
-      {{- if $dot.storageClass }}
-        storageClassName: {{ $dot.storageClass }}
+      {{- if $.storageClass }}
+        storageClassName: {{ $.storageClass }}
       {{- end }}
         accessModes: [ReadWriteOnce]
       {{- if $vals.imgOnFilesystem }}

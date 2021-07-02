@@ -31,20 +31,8 @@ livenessProbe:
   periodSeconds: 10
 terminationGracePeriodSeconds: 60
 
-clusterDomain: cluster.local
-certCount: 1
-certs:
-  duration: 87600h # 10 years
-  renewBefore: 360h # 15 days
-  key:
-    algorithm: RSA
-    encoding: PKCS1
-    size: 2048
-  subject:
-    countries: [IE]
-ca:
-  key: ''
-  cert: ''
+clusterCertSecret: ''
+trustPassword: ''
 
 resources:
   limits:

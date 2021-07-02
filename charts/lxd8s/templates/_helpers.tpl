@@ -63,3 +63,11 @@ Create the name of the service account to use
 HostSNI(`{{ $h }}`){{- if ne $i $last }} || {{ end -}}
 {{- end  }}
 {{- end }}
+
+{{- define "lxd8s.checkRandomSecrets" }}
+{{- if .Release.IsUpgrade }}
+  {{- if not .Values.trustPassword }}
+    {{- printf "You must provide the current trust password when upgrading!" | fail }}
+  {{- end }}
+{{- end }}
+{{- end }}
