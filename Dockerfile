@@ -85,8 +85,7 @@ RUN rm /sbin/modprobe && \
     sed -i 's|#rc_cgroup_mode=".*"|rc_cgroup_mode="hybrid"|' /etc/rc.conf && \
     sed -i 's|#rc_cgroup_memory_use_hierarchy=".*"|rc_cgroup_memory_use_hierarchy="YES"|' /etc/rc.conf && \
     echo 'cgroup_hierarchy_name="systemd"' > /etc/conf.d/cgroups && \
-    echo 'opts="hostname inet_mtu inet_addr inet_gw lxd_addr lxd_mtu k8s_replica liveness_cluster_lenience oom_interval oom_min_free"' > /etc/conf.d/cmdline && \
-    echo 'LIVENESSD_OPTIONS="-syslog -listen :8080"' > /etc/conf.d/livenessd && \
+    echo 'opts="replica hostname inet_mtu inet_addr inet_gw lxd_addr lxd_mtu"' > /etc/conf.d/cmdline && \
     #
     echo ttyS0 >> /etc/securetty && \
     sed -ri 's|^#ttyS0(.+)ttyS0|ttyS0\1-l /bin/autologin ttyS0|' /etc/inittab

@@ -35,7 +35,7 @@ func (s *Server) httpLiveness(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if s.replica < len(members)/2 {
+		if s.config.Replica < uint(len(members)/2) {
 			// Special case: the cluster is initialised already and we're within the minority of members.
 			// LXD will hang waiting for quorum until there's a a majority node, so let this one slip :)
 			if s.config.LivenessClusterLenience != 0 && !s.livenessClusterLenienceStart.IsZero() && time.Now().Sub(s.livenessClusterLenienceStart) > s.config.LivenessClusterLenience {

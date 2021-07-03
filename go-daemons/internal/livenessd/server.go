@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
-	"strconv"
 	"time"
 
 	"github.com/devplayer0/lxd8s/go-daemons/internal/lxd"
@@ -15,26 +13,9 @@ import (
 
 var replicaRegexp = regexp.MustCompile(`^.+-([0-9]+)`)
 
-func getReplica() (int, error) {
-	n, err := os.Hostname()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get hostname: %w", err)
-	}
-
-	m := replicaRegexp.FindStringSubmatch(n)
-	if len(m) == 0 {
-		return 0, nil
-	}
-
-	r, err := strconv.ParseUint(m[1], 10, 8)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse index: %w", err)
-	}
-
-	return int(r), nil
-}
-
 type Config struct {
+	Replica uint
+
 	LXDSocket   string
 	HTTPAddress string
 
@@ -45,9 +26,8 @@ type Config struct {
 }
 
 type Server struct {
-	config  Config
-	logger  *log.Logger
-	replica int
+	config Config
+	logger *log.Logger
 
 	// This represents the time at which an exception for cluster readiness was made
 	livenessClusterLenienceStart time.Time
@@ -81,13 +61,6 @@ func NewServer(config Config, logger *log.Logger) *Server {
 }
 
 func (s *Server) Start() error {
-	var err error
-
-	s.replica, err = getReplica()
-	if err != nil {
-		s.logger.Printf("Failed to get replica: %v", err)
-	}
-
 	if s.config.OOMInterval != 0 {
 		go func() {
 			t := time.NewTicker(s.config.OOMInterval)

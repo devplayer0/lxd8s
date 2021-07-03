@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	replica                 = flag.Uint("replica", 0, "replica")
 	addr                    = flag.String("listen", ":8080", "listen address")
 	logToSyslog             = flag.Bool("syslog", false, "write log messages to syslog")
 	livenessClusterLenience = flag.Duration("liveness-cluster-lenience", 5*time.Minute, "lenience perioid for initial cluster member readiness")
@@ -35,6 +36,8 @@ func main() {
 	}
 
 	s := livenessd.NewServer(livenessd.Config{
+		Replica: *replica,
+
 		HTTPAddress: *addr,
 
 		LivenessClusterLenience: *livenessClusterLenience,

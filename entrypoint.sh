@@ -70,7 +70,9 @@ setup_network() {
 }
 
 make_overlay() {
-    mkdir -p /tmp/overlay /tmp/overlay/etc /tmp/overlay/var/lib/lxd
+    mkdir -p /tmp/overlay/etc/conf.d /tmp/overlay/var/lib/lxd
+
+    echo "LIVENESSD_OPTIONS=\"-syslog -listen :8080 -replica $REPLICA -liveness-cluster-lenience=$LIVENESS_CLUSTER_LENIENCE -oom-interval=$OOM_INTERVAL -oom-min-free=$OOM_MIN_FREE\"" > /tmp/overlay/etc/conf.d/livenessd
 
     # resolv.conf from host
     sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf > /tmp/overlay/etc/resolv.conf
@@ -132,7 +134,7 @@ EOF
         set -x
     fi
 
-    tar -C /tmp/overlay -cf overlay.tar .
+    tar -C /tmp/overlay -cf /var/lib/lxd8s/overlay.tar .
     rm -r /tmp/overlay
 }
 
@@ -140,7 +142,7 @@ mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
 REPLICA="$(k8s_replica $(hostname))"
-CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
+CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) replica=$REPLICA"
 
 setup_network
 make_overlay
@@ -151,11 +153,11 @@ make_overlay
 exec vmmd \
     --cpus $CPUS \
     --mem $MEM \
-    -d ./rootfs.sfs \
+    -d /usr/lib/lxd8s/rootfs.sfs \
     -d "$LXD_DATA" \
     -d "/var/lib/lxd8s/overlay.tar:ro" \
     -d "$LXD_STORAGE" \
-    -n "$IFACE_VM_INET/true" \
+    -n "$IFACE_VM_INET" \
     -n "$IFACE_VM_LXD" \
     -c "$CMDLINE" \
-    ./vmlinux
+    /usr/lib/lxd8s/vmlinux
