@@ -28,21 +28,4 @@ mount -t tmpfs tmpfs /overlay
 mkdir /overlay/root /overlay/work
 mount -t overlay overlay -o lowerdir=/base,upperdir=/overlay/root,workdir=/overlay/work /newroot
 
-# Set up magic filesystems
-mount -t proc -o noexec,nosuid,nodev proc /newroot/proc
-mount -t sysfs -o noexec,nosuid,nodev sysfs /newroot/sys
-mount -t devtmpfs devtmpfs -o exec,nosuid,mode=0755,size=2M /newroot/dev
-
-# Set up PTYs
-[ -c /newroot/dev/ptmx ] || mknod -m 666 /newroot/dev/ptmx c 5 2
-[ -d /newroot/dev/pts ] || mkdir -m 755 /newroot/dev/pts
-mount -t devpts -o gid=5,mode=0620,noexec,nosuid devpts /newroot/dev/pts
-
-# Set up SHM
-[ -d /newroot/dev/shm ] || mkdir /newroot/dev/shm
-mount -t tmpfs -o nodev,nosuid,noexec shm /newroot/dev/shm
-
-# Separate tmpfs for /tmp
-mount -t tmpfs tmpfs /newroot/tmp
-
 exec switch_root /newroot /sbin/init
