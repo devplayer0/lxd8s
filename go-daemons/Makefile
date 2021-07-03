@@ -2,7 +2,7 @@
 
 SOURCES = $(shell find internal/ cmd/ -name '*.go')
 
-all: bin/livenessd
+all: bin/livenessd bin/vmmd
 
 bin/%: $(SOURCES)
 	go build -o $@ ./cmd/$(shell basename $@)

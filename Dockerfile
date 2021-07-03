@@ -140,11 +140,9 @@ RUN mkfs.ext4 -L root -d root/ rootfs.img 512M && \
 
 FROM alpine:3.14
 ARG FIRECRACKER_VERSION
-ARG FIRECTL_VERSION
 
 RUN apk --no-cache add iproute2 curl sed jq yq
 
-RUN apk --no-cache add libc6-compat
 RUN mkdir /tmp/firecracker && \
     wget -O /tmp/firecracker/release.tar.gz \
         "https://github.com/firecracker-microvm/firecracker/releases/download/v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64.tgz" && \
@@ -152,8 +150,7 @@ RUN mkdir /tmp/firecracker && \
     mv "/tmp/firecracker/release-v${FIRECRACKER_VERSION}/firecracker-v${FIRECRACKER_VERSION}-x86_64" /usr/local/bin/firecracker && \
     chmod +x /usr/local/bin/firecracker && \
     rm -r /tmp/firecracker
-RUN wget -O /usr/local/bin/firectl "https://github.com/devplayer0/firectl/releases/download/v${FIRECTL_VERSION}/firectl" && \
-    chmod +x /usr/local/bin/firectl
+COPY --from=daemons_builder /go/src/go-daemons/bin/vmmd /usr/local/bin/vmmd
 
 WORKDIR /opt/lxd8s
 COPY --from=kernel_builder /build/vmlinux ./vmlinux

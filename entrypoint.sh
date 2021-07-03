@@ -148,7 +148,7 @@ mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
 REPLICA="$(k8s_replica $(hostname))"
-CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
+CMDLINE="root=/dev/vda console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
 
 setup_network
 make_overlay
@@ -156,17 +156,14 @@ make_overlay
 [ -e "$LXD_DATA" ] || truncate -s 4G "$LXD_DATA"
 [ -e "$LXD_STORAGE" ] || truncate -s 16G "$LXD_STORAGE"
 
-
-rm -f /run/firecracker.sock
-exec firectl \
-    --socket-path /run/firecracker.sock \
-    --ncpus $CPUS \
-    --memory $MEM \
-    --tap-device "$IFACE_VM_INET/$(random_mac)" \
-    --tap-device "$IFACE_VM_LXD/$(random_mac)" \
-    --kernel ./vmlinux \
-    --kernel-opts "$CMDLINE" \
-    --root-drive ./rootfs.img \
-    --add-drive "$LXD_DATA:rw" \
-    --add-drive "./overlay.tar:ro" \
-    --add-drive "$LXD_STORAGE:rw"
+exec vmmd \
+    --cpus $CPUS \
+    --mem $MEM \
+    -d ./rootfs.img \
+    -d "$LXD_DATA" \
+    -d "./overlay.tar:ro" \
+    -d "$LXD_STORAGE" \
+    -n "$IFACE_VM_INET/true" \
+    -n "$IFACE_VM_LXD" \
+    -c "$CMDLINE" \
+    ./vmlinux
