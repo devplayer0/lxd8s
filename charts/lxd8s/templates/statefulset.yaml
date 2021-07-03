@@ -35,6 +35,10 @@ spec:
             - name: FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS
               value: {{ .Values.firectlTimeout | quote }}
 
+            - name: CPUS
+              value: {{ .Values.vm.cpus | quote }}
+            - name: MEM
+              value: {{ .Values.vm.memory | quote }}
             - name: LXD_DATA
             {{- if .Values.pvc.lxd.imgOnFilesystem }}
               value: /mnt/lxd/disk.img
@@ -47,10 +51,6 @@ spec:
             {{- else }}
               value: /dev/storage
             {{- end }}
-            - name: CPUS
-              value: {{ .Values.vm.cpus | quote }}
-            - name: MEM
-              value: {{ .Values.vm.memory | quote }}
 
             - name: INET_HOST
               value: {{ .Values.nat.host | quote }}
@@ -58,18 +58,18 @@ spec:
               value: {{ .Values.nat.vm | quote }}
             - name: LXD_NET
               value: {{ .Values.network | quote }}
+            - name: TRUST_PASSWORD
+              value: {{ .Values.trustPassword | default (randAlphaNum 16) | quote }}
 
             - name: KUBELAN
               value: 'yes'
-            - name: TRUST_PASSWORD
-              value: {{ .Values.trustPassword | default (randAlphaNum 16) | squote }}
 
             - name: LIVENESS_CLUSTER_LENIENCE
-              value: {{ .Values.livenessClusterLenience | squote }}
+              value: {{ .Values.livenessClusterLenience | quote }}
             - name: OOM_INTERVAL
-              value: {{ .Values.oomInterval | squote }}
+              value: {{ .Values.oomInterval | quote }}
             - name: OOM_MIN_FREE
-              value: {{ .Values.oomMinFree | squote }}
+              value: {{ .Values.oomMinFree | quote }}
           ports:
             - name: liveness
               containerPort: 8080
@@ -144,7 +144,7 @@ spec:
             name: {{ include "lxd8s.fullname" . }}-preseed
         - name: cluster-cert
           secret:
-            secretName: {{ .Values.clusterCertSecret | squote }}
+            secretName: {{ .Values.clusterCertSecret | quote }}
         - name: kubelan-config
           configMap:
           {{- if .Values.global.kubelan.externalConfigMap }}
