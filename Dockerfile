@@ -2,7 +2,7 @@ FROM alpine:3.14 AS kernel_builder
 ARG KERNEL_VERSION
 
 RUN apk --no-cache add gcc make musl-dev bison flex linux-headers elfutils-dev \
-    diffutils openssl openssl-dev perl patch findutils
+    diffutils openssl openssl-dev perl patch findutils zstd busybox-static
 
 WORKDIR /build
 RUN wget "https://cdn.kernel.org/pub/linux/kernel/$(echo $KERNEL_VERSION | \
@@ -13,10 +13,15 @@ COPY lxd8s.config /build/
 RUN tar Jxf "linux-$KERNEL_VERSION.tar.xz" && \
     for p in *.patch; do patch -d "linux-$KERNEL_VERSION/" -p1 < "$p"; done && \
     mv lxd8s.config "linux-$KERNEL_VERSION/arch/x86/configs/" && \
-    make -C "linux-$KERNEL_VERSION/" defconfig lxd8s.config && \
-    make -C "linux-$KERNEL_VERSION/" -j$(nproc) vmlinux && \
-    mv "linux-$KERNEL_VERSION/vmlinux" ./ && \
-    rm -r "linux-$KERNEL_VERSION/"
+    cd "linux-$KERNEL_VERSION/" && \
+    make defconfig lxd8s.config && \
+    make -j$(nproc) vmlinux
+
+COPY --chown=root:root initramfs/ /build/initramfs/
+RUN cp /bin/busybox.static initramfs/bin/busybox && \
+    cd "linux-$KERNEL_VERSION/" && \
+    make "CONFIG_INITRAMFS_SOURCE=../initramfs" vmlinux && \
+    mv vmlinux ../
 
 
 FROM alpine:3.14 AS lxd_builder
@@ -128,13 +133,12 @@ RUN echo 'LXD_OPTIONS="--logfile /var/lib/lxd/lxd.log"' >> /etc/conf.d/lxd
 
 FROM alpine:3.14 AS rootfs_img_builder
 
-RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories && \
-    apk --no-cache add e2fsprogs
+RUN apk --no-cache add squashfs-tools
 
 WORKDIR /build
 
 COPY --from=rootfs / root/
-RUN mkfs.ext4 -L root -d root/ rootfs.img 512M && \
+RUN mksquashfs root/ rootfs.sfs && \
     rm -rf root/
 
 
@@ -152,9 +156,9 @@ RUN mkdir /tmp/firecracker && \
     rm -r /tmp/firecracker
 COPY --from=daemons_builder /go/src/go-daemons/bin/vmmd /usr/local/bin/vmmd
 
-WORKDIR /opt/lxd8s
-COPY --from=kernel_builder /build/vmlinux ./vmlinux
-COPY --from=rootfs_img_builder /build/rootfs.img ./rootfs.img
+WORKDIR /var/lib/lxd8s
+COPY --from=kernel_builder /build/vmlinux /usr/lib/lxd8s/vmlinux
+COPY --from=rootfs_img_builder /build/rootfs.sfs /usr/lib/lxd8s/rootfs.sfs
 
 RUN mkdir -p /run/config && echo '{}' > /run/config/preseed.yaml
 
@@ -162,8 +166,8 @@ ENV FIRECRACKER_GO_SDK_REQUEST_TIMEOUT_MILLISECONDS=10000
 
 ENV CPUS=1 \
     MEM=512 \
-    LXD_DATA=./lxd.img \
-    LXD_STORAGE=./storage.img
+    LXD_DATA=/var/lib/lxd8s/lxd.img \
+    LXD_STORAGE=/var/lib/lxd8s/storage.img
 
 ENV INET_HOST=192.168.69.1/30 \
     INET_VM=192.168.69.2/30 \

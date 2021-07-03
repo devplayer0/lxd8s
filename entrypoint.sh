@@ -5,14 +5,6 @@ IFACE_VM_INET="vm-inet"
 IFACE_VM_LXD="vm-lxd"
 IFACE_LXD_BRIDGE="lxd-bridge"
 
-random_mac() {
-    printf '%02x' $((0x$(od /dev/urandom -N1 -t x1 -An | cut -c 2-) & 0xFE | 0x02)); od /dev/urandom -N5 -t x1 -An | sed 's/ /:/g'
-}
-
-b64() {
-    base64 - | tr -d '\n'
-}
-
 ensure_link_gone() {
     (ip link show "$1" > /dev/null 2>&1 && ip link del "$1") || true
 }
@@ -148,7 +140,7 @@ mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
 REPLICA="$(k8s_replica $(hostname))"
-CMDLINE="root=/dev/vda console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
+CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) k8s_replica=$REPLICA liveness_cluster_lenience=$LIVENESS_CLUSTER_LENIENCE oom_interval=$OOM_INTERVAL oom_min_free=$OOM_MIN_FREE"
 
 setup_network
 make_overlay
@@ -159,9 +151,9 @@ make_overlay
 exec vmmd \
     --cpus $CPUS \
     --mem $MEM \
-    -d ./rootfs.img \
+    -d ./rootfs.sfs \
     -d "$LXD_DATA" \
-    -d "./overlay.tar:ro" \
+    -d "/var/lib/lxd8s/overlay.tar:ro" \
     -d "$LXD_STORAGE" \
     -n "$IFACE_VM_INET/true" \
     -n "$IFACE_VM_LXD" \
