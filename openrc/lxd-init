@@ -20,8 +20,7 @@ start() {
         [ $attempts -eq $max_attempts ] && eerror "Timed out waiting for LXD" && exit 1
     done
 
-    source /etc/cmdline
-    [ $KOPT_replica -eq 0 ] && [ -e /var/lib/lxd/cluster.crt ] && \
+    [ "$replica" -eq 0 ] && [ -e /var/lib/lxd/cluster.crt ] && \
         (cd /var/lib/lxd && mv cluster.crt pki-cluster.crt && mv cluster.key pki-cluster.key)
 
     ebegin "Initialising LXD with preseed file $preseed_file"

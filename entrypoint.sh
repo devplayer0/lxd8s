@@ -26,6 +26,11 @@ k8s_replica() {
 }
 
 setup_network() {
+    mkdir -p etc/conf.d
+
+    sed 's|^nameserver 127..*|nameserver 1.1.1.1|' /etc/resolv.conf > etc/resolv.conf
+    echo "$(hostname)" > etc/hostname
+
     iface_host_inet="$(ip route | grep default | awk '{ print $5 }')"
     inet_mtu="$(get_link_mtu $iface_host_inet)"
 
@@ -37,14 +42,16 @@ setup_network() {
     ip addr add "$INET_HOST" dev "$IFACE_VM_INET"
     inet_host_addr="$(ip_net_addr $INET_HOST)"
     inet_vm_addr="$(ip_net_addr $INET_VM)"
-    CMDLINE="$CMDLINE inet_mtu=$inet_mtu inet_addr=$INET_VM inet_gw=$inet_host_addr"
+    echo "inet_mtu=$inet_mtu" >> etc/conf.d/lxd8snet
+    echo "inet_addr=$INET_VM" >> etc/conf.d/lxd8snet
+    echo "inet_gw=$inet_host_addr" >> etc/conf.d/lxd8snet
 
     # Create host side of VM LXD interface
     ensure_link_gone "$IFACE_VM_LXD"
     ip tuntap add "$IFACE_VM_LXD" mode tap
     ip link set dev "$IFACE_VM_LXD" up
     LXD_NET_IP="$(set_net_last $LXD_NET $(($REPLICA + 1)))"
-    CMDLINE="$CMDLINE lxd_addr=$LXD_NET_IP"
+    echo "lxd_addr=$LXD_NET_IP" >> etc/conf.d/lxd8snet
 
     # Set up NAT so that LXD requests go to the VM's internet interface and traffic coming from the VM's internet
     # interface is routed properly
@@ -66,26 +73,23 @@ setup_network() {
     ip link set dev "$IFACE_LXD_BRIDGE" mtu "$lxd_mtu"
     ip link set dev "$overlay_iface" master "$IFACE_LXD_BRIDGE"
     ip link set dev "$IFACE_VM_LXD" master "$IFACE_LXD_BRIDGE"
-    CMDLINE="$CMDLINE lxd_mtu=$lxd_mtu"
+    echo "lxd_mtu=$lxd_mtu" >> etc/conf.d/lxd8snet
 }
 
-make_overlay() {
-    mkdir -p /tmp/overlay/etc/conf.d /tmp/overlay/var/lib/lxd
+setup_lxd() {
+    mkdir -p etc/conf.d var/lib/lxd
 
-    echo "LIVENESSD_OPTIONS=\"-syslog -listen :8080 -replica $REPLICA -liveness-cluster-lenience=$LIVENESS_CLUSTER_LENIENCE -oom-interval=$OOM_INTERVAL -oom-min-free=$OOM_MIN_FREE\"" > /tmp/overlay/etc/conf.d/livenessd
-
-    # resolv.conf from host
-    sed 's|^nameserver 127..*|nameserver 1.1.1.1|' < /etc/resolv.conf > /tmp/overlay/etc/resolv.conf
+    echo "replica=$REPLICA" >> etc/conf.d/lxd-init
 
     if [ -f /run/cluster_cert/tls.crt ]; then
-        cp /run/cluster_cert/tls.crt /tmp/overlay/var/lib/lxd/cluster.crt
-        cp /run/cluster_cert/tls.key /tmp/overlay/var/lib/lxd/cluster.key
+        cp /run/cluster_cert/tls.crt var/lib/lxd/cluster.crt
+        cp /run/cluster_cert/tls.key var/lib/lxd/cluster.key
     fi
 
     # Setup LXD preseed
     if [ $REPLICA -eq 0 ]; then
         set +x
-        yq eval-all -j 'select(fileIndex == 0) * select(fileIndex == 1)' /run/config/preseed.yaml - <<EOF > /tmp/overlay/var/lib/lxd/preseed.json
+        yq eval-all -j 'select(fileIndex == 0) * select(fileIndex == 1)' /run/config/preseed.yaml - <<EOF > var/lib/lxd/preseed.json
 config:
   core.trust_password: '$TRUST_PASSWORD'
   core.https_address: '$inet_vm_addr:443'
@@ -119,7 +123,7 @@ EOF
         set -x
     else
         set +
-        yq eval -j . - <<EOF > /tmp/overlay/var/lib/lxd/preseed.json
+        yq eval -j . - <<EOF > var/lib/lxd/preseed.json
 config:
   core.https_address: '$inet_vm_addr:443'
 
@@ -134,18 +138,25 @@ EOF
         set -x
     fi
 
-    tar -C /tmp/overlay -cf /var/lib/lxd8s/overlay.tar .
-    rm -r /tmp/overlay
+    echo "LIVENESSD_OPTIONS=\"-syslog -listen :8080 -replica $REPLICA -liveness-cluster-lenience=$LIVENESS_CLUSTER_LENIENCE -oom-interval=$OOM_INTERVAL -oom-min-free=$OOM_MIN_FREE\"" > etc/conf.d/livenessd
 }
 
 mkdir -p /dev/net
 [ -c /dev/net/tun ] || mknod /dev/net/tun c 10 200
 
 REPLICA="$(k8s_replica $(hostname))"
-CMDLINE="console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname) replica=$REPLICA"
+
+cwd="$(pwd)"
+mkdir /tmp/overlay
+cd /tmp/overlay
 
 setup_network
-make_overlay
+setup_lxd
+
+cd "$cwd"
+rm -f /var/lib/lxd8s/overlay.tar
+tar -C /tmp/overlay -cf /var/lib/lxd8s/overlay.tar .
+rm -r /tmp/overlay
 
 [ -e "$LXD_DATA" ] || truncate -s 4G "$LXD_DATA"
 [ -e "$LXD_STORAGE" ] || truncate -s 16G "$LXD_STORAGE"
@@ -159,5 +170,5 @@ exec vmmd \
     -d "$LXD_STORAGE" \
     -n "$IFACE_VM_INET" \
     -n "$IFACE_VM_LXD" \
-    -c "$CMDLINE" \
+    -c "console=ttyS0 noapic reboot=k panic=1 hostname=$(hostname)" \
     /usr/lib/lxd8s/vmlinux

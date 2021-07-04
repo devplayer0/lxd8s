@@ -6,25 +6,16 @@ iface_lxd_bridge="${iface_lxd_bridge:-lxd-lan}"
 
 depend() {
     provide net
-    before hostname
 }
 
 start() {
-    source /etc/cmdline
-
-    if [ -n "$KOPT_hostname" ]; then
-        ebegin "Writing /proc/cmdline hostname"
-        echo "$KOPT_hostname" > /etc/hostname
-        eend $?
-    fi
-
     ip link set dev lo up
 
     ebegin "Setting up internet interface $iface_inet"
     ip link set dev "$iface_inet" up && \
-    ip link set dev "$iface_inet" mtu "$KOPT_inet_mtu" && \
-    ip addr add "$KOPT_inet_addr" dev "$iface_inet" && \
-    ip route add default via "$KOPT_inet_gw"
+    ip link set dev "$iface_inet" mtu "$inet_mtu" && \
+    ip addr add "$inet_addr" dev "$iface_inet" && \
+    ip route add default via "$inet_gw"
     eend $?
 
     ebegin "Setting up LXD bridge $iface_lxd_bridge"
@@ -32,9 +23,9 @@ start() {
     ip link set dev "$iface_lxd_bridge" up
     eend $?
 
-    if [ -n "$KOPT_lxd_addr" ]; then
+    if [ -n "$lxd_addr" ]; then
         ebegin "Setting LXD bridge $iface_lxd_bridge IP address"
-        ip addr add "$KOPT_lxd_addr" dev "$iface_lxd_bridge"
+        ip addr add "$lxd_addr" dev "$iface_lxd_bridge"
         eend $?
     fi
 
@@ -43,10 +34,10 @@ start() {
     ip link set dev "$iface_lxd" master "$iface_lxd_bridge"
     eend $?
 
-    if [ -n "$KOPT_lxd_mtu" ]; then
+    if [ -n "$lxd_mtu" ]; then
         ebegin "Setting LXD interface $iface_lxd and bridge $iface_lxd_bridge MTU"
-        ip link set dev "$iface_lxd" mtu "$KOPT_lxd_mtu" && \
-        ip link set dev "$iface_lxd_bridge" mtu "$KOPT_lxd_mtu"
+        ip link set dev "$iface_lxd" mtu "$lxd_mtu" && \
+        ip link set dev "$iface_lxd_bridge" mtu "$lxd_mtu"
         eend $?
     fi
 }
