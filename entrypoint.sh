@@ -162,8 +162,8 @@ rm -r /tmp/overlay
 [ -e "$LXD_STORAGE" ] || truncate -s 16G "$LXD_STORAGE"
 
 exec vmmd \
-    --cpus $CPUS \
-    --mem $MEM \
+    --cpus "$CPUS" \
+    --mem "$MEM" \
     -d /usr/lib/lxd8s/rootfs.sfs \
     -d "$LXD_DATA" \
     -d "/var/lib/lxd8s/overlay.tar:ro" \

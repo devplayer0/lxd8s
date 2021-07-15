@@ -7,19 +7,21 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 
 	flag "github.com/spf13/pflag"
 
+	"github.com/devplayer0/lxd8s/go-daemons/internal/util"
 	"github.com/devplayer0/lxd8s/go-daemons/internal/vmmd"
 )
 
 var (
 	firecrackerSocket = flag.String("firecracker-socket", "/run/firecracker.sock", "firecracker unix socket path")
 
-	cpus           = flag.Uint("cpus", 1, "number of CPU's to allocate")
+	cpus           = flag.String("cpus", "1", "number of CPU's to allocate, or percentage")
 	hyperthreading = flag.Bool("hyperthreading", true, "enable hyperthreading")
-	memory         = flag.Uint64("mem", 512, "amount of memory (mebibytes)")
+	memory         = flag.String("mem", "512", "amount of memory (mebibytes), or percentage")
 
 	commandLine = flag.StringP("command-line", "c", "", "kernel command line")
 
@@ -37,6 +39,20 @@ func init() {
 }
 
 func run(ctx context.Context) error {
+	cpuCount, err := util.AbsoluteOrPercentage(*cpus, runtime.NumCPU())
+	if err != nil {
+		return fmt.Errorf("failed to parse CPUs: %w", err)
+	}
+
+	totalMem, err := util.MemTotal()
+	if err != nil {
+		return fmt.Errorf("failed to get total system memory: %w", err)
+	}
+	memValue, err := util.AbsoluteOrPercentage(*memory, int(totalMem))
+	if err != nil {
+		return fmt.Errorf("failed to parse memory: %w", err)
+	}
+
 	pDisks := make([]vmmd.Disk, len(*disks))
 	for i, d := range *disks {
 		pDisks[i] = vmmd.ParseDisk(d)
@@ -49,9 +65,9 @@ func run(ctx context.Context) error {
 	config := vmmd.Config{
 		FirecrackerSocket: *firecrackerSocket,
 
-		CPUs:           *cpus,
+		CPUs:           uint(cpuCount),
 		Hyperthreading: *hyperthreading,
-		Memory:         *memory,
+		Memory:         uint64(memValue),
 
 		Kernel:      flag.Arg(0),
 		CommandLine: *commandLine,
