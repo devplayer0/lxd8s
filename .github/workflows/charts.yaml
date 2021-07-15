@@ -30,6 +30,7 @@ jobs:
 
       - name: Update charts in main repo
         run: |
+          rm -rf charts/lxd8s
           cp -a ../main/charts/ ./
 
           git config --local user.email "action@github.com"
