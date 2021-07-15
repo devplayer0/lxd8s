@@ -1,4 +1,5 @@
 replicaCount: 1
+onePerNode: false
 
 image:
   repository: ghcr.io/devplayer0/lxd8s
