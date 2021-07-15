@@ -43,6 +43,12 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to parse CPUs: %w", err)
 	}
+	if *hyperthreading && cpuCount%2 != 0 {
+		cpuCount--
+	}
+	if cpuCount < 1 {
+		cpuCount = 1
+	}
 
 	totalMem, err := util.MemTotal()
 	if err != nil {
