@@ -57,11 +57,13 @@ Create the name of the service account to use
 {{- include "lxd8s.fullname" . }}
 {{- end }}
 
-{{- define "hostSNI" }}
+{{- define "hostSNI" -}}
+HostSNI(
 {{- $last := sub (len .) 1 }}
 {{- range $i, $h := . -}}
-HostSNI(`{{ $h }}`){{- if ne $i $last }} || {{ end -}}
-{{- end  }}
+`{{ $h }}`{{- if ne $i $last }}, {{ end -}}
+{{- end -}}
+)
 {{- end }}
 
 {{- define "lxd8s.checkRandomSecrets" }}

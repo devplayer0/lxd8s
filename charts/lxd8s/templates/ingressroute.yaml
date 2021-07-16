@@ -1,4 +1,4 @@
-{{- if .Values.ingressRoute.enabled -}}
+{{- if and .Values.ingressRoute.enabled .Values.ingressRoute.hosts -}}
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRouteTCP
 metadata:
@@ -6,6 +6,10 @@ metadata:
   labels:
     {{- include "lxd8s.labels" . | nindent 4 }}
 spec:
+  {{- with .Values.ingressRoute.entryPoints }}
+  entryPoints:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   routes:
     - match: '{{ include "hostSNI" .Values.ingressRoute.hosts }}'
       services:

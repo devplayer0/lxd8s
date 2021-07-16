@@ -21,6 +21,7 @@ service:
 ingressRoute:
   enabled: false
   hosts: []
+  entryPoints: []
 
 startupProbe:
   initialDelaySeconds: 5
