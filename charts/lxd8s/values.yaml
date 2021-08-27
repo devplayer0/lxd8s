@@ -23,6 +23,7 @@ ingressRoute:
   hosts: []
   entryPoints: []
 
+enableProbes: true
 startupProbe:
   initialDelaySeconds: 5
   timeoutSeconds: 5
