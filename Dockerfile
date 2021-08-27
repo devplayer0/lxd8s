@@ -36,9 +36,9 @@ RUN adduser -D builder && \
 USER builder
 WORKDIR /home/builder
 
-# This commit is lxd 4.15
+# This commit has lxd at v4.17
 RUN git clone https://gitlab.alpinelinux.org/alpine/aports && \
-    git -C aports checkout 402a656119b5b86edd9f01f3cb2b5b68d12d6396
+    git -C aports checkout 640baad07678d15ffe999e1c6bdc297cb7d52c2a
 
 RUN USER=builder abuild-keygen -na && \
     sudo cp -v "$HOME"/.abuild/builder-*.rsa.pub /etc/apk/keys/ && \
