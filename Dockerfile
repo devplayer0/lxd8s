@@ -55,7 +55,7 @@ RUN cd aports/testing/lxd && \
     abuild -r
 
 
-FROM golang:1.16-alpine3.14 AS daemons_builder
+FROM golang:1.17-alpine3.14 AS daemons_builder
 RUN apk --no-cache add make
 
 WORKDIR /go/src/go-daemons
