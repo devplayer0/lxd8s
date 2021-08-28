@@ -48,7 +48,7 @@ jobs:
         with:
           build-args: |
             KERNEL_VERSION=5.10.61
-            FIRECRACKER_VERSION=0.25.0
+            FIRECRACKER_VERSION=0.24.6
           tags: ${{ env.REPO }}:${{ steps.vars.outputs.tag }},${{ env.REPO }}:latest
           push: true
           cache-from: type=local,src=/tmp/.buildx-cache
